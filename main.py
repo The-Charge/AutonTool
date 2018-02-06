@@ -1,23 +1,27 @@
 import pygame
 import math
 
+SCREEN_X = 421
+SCREEN_Y = 600
+#Start represents front of robot 
+STARTING_Y = 435
+PIXELS_PER_FOOT = 13.75
+DEGREES_PER_RADIAN = 57.2958
+YELLOW = (255, 255, 0)
+GREEN =(0 ,204 ,0)
+BTN_LL = pygame.Rect((0, 479, 105, 50))
+BTN_LR = pygame.Rect((105, 479, 105, 50))
+BTN_RL = pygame.Rect((210, 479, 105, 50))
+BTN_RR = pygame.Rect((315, 479, 105, 50))
+BTN_EXPORT = pygame.Rect((0, 529, 105, 50))
+
 def main():
-    PIXELS_PER_FOOT = 13.75
-    DEGREES_PER_RADIAN = 57.2958
-    YELLOW = (255, 255, 0)
-    GREEN =(0 ,204 ,0)
-    BTN_LL = pygame.Rect((0, 479, 105, 50))
-    BTN_LR = pygame.Rect((105, 479, 105, 50))
-    BTN_RL = pygame.Rect((210, 479, 105, 50))
-    BTN_RR = pygame.Rect((315, 479, 105, 50))
-    BTN_EXPORT = pygame.Rect((0, 529, 105, 50))
-    
     currentPath = "LL"
     buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT]
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
     
     pygame.init()
-    screen = pygame.display.set_mode((421, 600))
+    screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
     pygame.display.set_caption("AutonTool: LL")
     pygame.display.update()
     background = pygame.image.load("Field.png")
@@ -45,12 +49,23 @@ def main():
         pygame.display.flip()
  
         for event in pygame.event.get():
-            print(event)
+            #print(event)
             if event.type == pygame.QUIT:
                 finished = True
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 if event.pos[1] < 479:
-                    paths[currentPath].append(event.pos)
+                    print(event.pos)
+                    if len(paths[currentPath]) == 0:
+                        start_x = event.pos[0]
+                        paths[currentPath].append((start_x, STARTING_Y))
+                    elif len(paths[currentPath]) == 1:
+                        paths[currentPath].append((start_x, event.pos[1]))
+                    else:
+                        if abs(calcAngle(paths[currentPath][-1], event.pos)) > 5:
+                            paths[currentPath].append(event.pos)
+                        else:
+                            #TODO: Fix this
+                            paths[currentPath].append((0, event.pos[1]))
                 if event.pos[1] > 479:
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos) == 1:
@@ -71,17 +86,21 @@ def main():
                         for x in range(len(paths["LL"]) - 1):
                             p1 = paths["LL"][x]
                             p2 = paths["LL"][x + 1]
-                            angle = math.atan((p2[1] - p1[1]) / (p2[0] - p1[0])) * DEGREES_PER_RADIAN
+                            
+                            angle = calcAngle(p1, p2)
                             outputLL += str(round(angle, 2)) + "deg"
+                            
                             distance = calcDist(p2, p1) / PIXELS_PER_FOOT
                             outputLL += str(round(distance, 2)) + "ft"
+                            
                         for x in range(len(paths["LR"]) - 1):
                             pass
                         for x in range(len(paths["RL"]) - 1):
                             pass
                         for x in range(len(paths["RR"]) - 1):
                             pass
-                    print(outputLL)
+                        print("LL: " + outputLL)
+                   
                     pygame.display.set_caption("AutonTool: " + currentPath)
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 if len(paths[currentPath]) > 0:
@@ -92,8 +111,22 @@ def main():
     pygame.quit()
     quit()
 
+#Returns the distance between two pygame positions
 def calcDist(p1, p2):
     return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
+#Returns absolute angle from -180 to 180 between two pygame positions, with zero being straight forward
+def calcAngle(p1, p2):
+    point1 = (p1[0], SCREEN_Y - p1[1])
+    point2 = (p2[0], SCREEN_Y - p2[1])
+    delta_x = point2[0] - point1[0]
+    delta_y = point1[1] - point2[1]
+    if delta_x == 0:
+        theta_radians = -1.57079632679
+    else:
+        theta_radians = math.atan2(delta_y, delta_x)
+    theta_radians += 1.57079632679
+    return theta_radians * DEGREES_PER_RADIAN
     
 if __name__=="__main__":
     main()
