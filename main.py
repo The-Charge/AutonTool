@@ -15,6 +15,14 @@ BTN_RL = pygame.Rect((210, 479, 105, 50))
 BTN_RR = pygame.Rect((315, 479, 105, 50))
 BTN_EXPORT = pygame.Rect((0, 529, 105, 50))
 
+def drawPath(screen, path):
+        for point in path:
+            pygame.draw.circle(screen, YELLOW, point, 2, 0)
+        
+        for x in range(len(path) - 1):
+            pygame.draw.line(screen, YELLOW, path[x], path[x + 1], 1)
+
+
 def main():
     currentPath = "LL"
     buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT]
@@ -39,11 +47,7 @@ def main():
         pygame.draw.rect(screen, YELLOW, BTN_RR, 0) 
         pygame.draw.rect(screen, YELLOW, BTN_EXPORT, 0)
         
-        for point in paths[currentPath]:
-            pygame.draw.circle(screen, YELLOW, point, 2, 0)
-        
-        for x in range(len(paths[currentPath]) - 1):
-            pygame.draw.line(screen, YELLOW, paths[currentPath][x], paths[currentPath][x + 1], 1)
+        drawPath(screen, paths[currentPath])
         
         
         pygame.display.flip()
