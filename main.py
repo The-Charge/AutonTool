@@ -64,8 +64,7 @@ def main():
                         if abs(calcAngle(paths[currentPath][-1], event.pos)) > 5:
                             paths[currentPath].append(event.pos)
                         else:
-                            #TODO: Fix this
-                            paths[currentPath].append((0, event.pos[1]))
+                            paths[currentPath].append((paths[currentPath][-1][0], event.pos[1]))
                 if event.pos[1] > 479:
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos) == 1:
@@ -120,13 +119,24 @@ def calcAngle(p1, p2):
     point1 = (p1[0], SCREEN_Y - p1[1])
     point2 = (p2[0], SCREEN_Y - p2[1])
     delta_x = point2[0] - point1[0]
-    delta_y = point1[1] - point2[1]
-    if delta_x == 0:
-        theta_radians = -1.57079632679
+    delta_y = point2[1] - point1[1]
+    
+    if delta_x == 0 and delta_y > 0:
+        theta_degrees = 90
+    elif delta_x == 0 and delta_y < 0:
+        theta_degrees = -90
     else:
         theta_radians = math.atan2(delta_y, delta_x)
-    theta_radians += 1.57079632679
-    return theta_radians * DEGREES_PER_RADIAN
+        theta_degrees = theta_radians * DEGREES_PER_RADIAN
+        
+    theta_degrees -= 90
+    if theta_degrees < -180:
+        theta_degrees += 360
+    
+    if theta_degrees != 180 and theta_degrees != 0:
+        theta_degrees *= -1
+        
+    return theta_degrees
     
 if __name__=="__main__":
     main()
