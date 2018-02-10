@@ -1,10 +1,14 @@
 import pygame
 import math
 
+# Screen positions
 SCREEN_X = 421
 SCREEN_Y = 600
-#Start represents center of robot 
+
+# Center of robot at start
 STARTING_Y = 435
+
+# Conversion factors
 PIXELS_PER_FOOT = 13.75
 
 # Colors 
@@ -19,6 +23,8 @@ BTN_LR = pygame.Rect((105, 479, 105, 50))
 BTN_RL = pygame.Rect((210, 479, 105, 50))
 BTN_RR = pygame.Rect((315, 479, 105, 50))
 BTN_EXPORT = pygame.Rect((0, 529, 105, 50))
+BTN_SWITCH = pygame.Rect((105, 529, 105, 50))
+BTN_SCALE = pygame.Rect((210, 529, 105, 50))
 
 # Robot dimensions
 ROBOT_DIMS_INCHES = [38.5, 33.5]
@@ -32,6 +38,7 @@ def drawRobot(screen, point, angle, color):
     rads = [math.radians(angle) for angle in angles]
     x_points = [math.cos(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[0] for rad in rads]
     y_points = [math.sin(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[1] for rad in rads]
+    print(point)
     points = []
     for i in range(len(x_points)):
         points.append([x_points[i], y_points[i]])
@@ -56,7 +63,7 @@ def drawPath(screen, path):
 
 def main():
     currentPath = "LL"
-    buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT]
+    buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT, BTN_SWITCH, BTN_SCALE]
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
     
     pygame.init()
@@ -77,6 +84,8 @@ def main():
         pygame.draw.rect(screen, GREEN, BTN_RL, 0) 
         pygame.draw.rect(screen, YELLOW, BTN_RR, 0) 
         pygame.draw.rect(screen, YELLOW, BTN_EXPORT, 0)
+        pygame.draw.rect(screen, GREEN, BTN_SWITCH, 0)
+        pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
         
         
         drawPath(screen, paths[currentPath])
