@@ -38,11 +38,13 @@ def drawRobot(screen, point, angle, color):
     rads = [math.radians(angle) for angle in angles]
     x_points = [math.cos(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[0] for rad in rads]
     y_points = [math.sin(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[1] for rad in rads]
-    #print(point)
+    print(point)
     points = []
     for i in range(len(x_points)):
         points.append([x_points[i], y_points[i]])
     pygame.draw.polygon(screen, color, points, 1)
+
+
 
 def drawPath(screen, path):
     for point in path:
@@ -57,6 +59,7 @@ def drawPath(screen, path):
         pygame.draw.line(screen, YELLOW, last_point, next_point, 1)
     if len(path) > 0:
         drawRobot(screen, path[0], 0, BLUE)
+
 
 def main():
     currentPath = "LL"
@@ -84,7 +87,9 @@ def main():
         pygame.draw.rect(screen, GREEN, BTN_SWITCH, 0)
         pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
         
+        
         drawPath(screen, paths[currentPath])
+        
         
         pygame.display.flip()
  
@@ -105,7 +110,7 @@ def main():
                             paths[currentPath].append(event.pos)
                         else:
                             paths[currentPath].append((paths[currentPath][-1][0], event.pos[1]))
-                if event.pos[1] >= 479:
+                if event.pos[1] > 479:
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos) == 1:
                             indexClicked = x
