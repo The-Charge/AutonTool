@@ -1,5 +1,6 @@
 import pygame
 import math
+import sys
 
 # Screen positions
 SCREEN_X = 421
@@ -25,6 +26,7 @@ BTN_RR = pygame.Rect((315, 479, 105, 50))
 BTN_EXPORT = pygame.Rect((0, 529, 105, 50))
 BTN_SWITCH = pygame.Rect((105, 529, 105, 50))
 BTN_SCALE = pygame.Rect((210, 529, 105, 50))
+BTN_DROP = pygame.Rect((315, 529, 105, 50))
 
 # Robot dimensions
 ROBOT_DIMS_INCHES = [38.5, 33.5]
@@ -46,11 +48,11 @@ def drawRobot(screen, point, angle, color):
 
 def drawPath(screen, path):
     for point in path:
-        pygame.draw.circle(screen, YELLOW, point, 2, 0)
+        pygame.draw.circle(screen, YELLOW, point[0:2], 2, 0)
     
     for x in range(len(path) - 1):
-        last_point = path[x]
-        next_point = path[x + 1]
+        last_point = (path[x][0], path[x][1])
+        next_point = (path[x + 1][0], path[x][1])
         angle = calcAngle(last_point, next_point)
         drawRobot(screen, last_point, angle, BLUE)
         drawRobot(screen, next_point, angle, RED)
@@ -58,29 +60,41 @@ def drawPath(screen, path):
     if len(path) > 0:
         drawRobot(screen, path[0], 0, BLUE)
 
-#Takes in a list of coordinates and returns a string of distances and angles
+#Takes in a list of coordinates and instructions and returns a string of distances and angles
 def outputPath(paths):
     outputList = []
     for x in range(len(paths) - 1):
-        
-        p1 = paths[x]
-        p2 = paths[x + 1]
-        
+        p1 = (path[x][0], path[x][1])
+        p2 = (path[x + 1][0], path[x][1])
         angle = calcAngle(p1, p2)
         if angle != 0:
-            outputList.append((str(round(angle, 2)), "deg"))
-        
+            outputList.append([str(round(angle, 2)), "dg,"])
         distance = calcDist(p2, p1) / PIXELS_PER_FOOT
-        outputList.append((str(round(distance, 2)), "ft"))
-        
+        outputList.append([str(round(distance, 2)), "ft,"])
+        if path[x+1][2] == 1:
+            outputList[-1].append("e1")
+        if path[x+1][2] == 2:
+            outputList[-1].append("e2")
+        if path[x+1][2] == 3:
+            outputList[-1].append("drop")
+        else:
+            outputList[-1].append("")
+        """else:
+            if paths[x][1] == 1:
+                outputList.append((str("_POSITION_ONE_")))
+            elif paths[x][1] == 2:
+                outputList.append((str("_POSITION_TWO_")))
+            elif paths[x][1] == -1:
+                outputList.append((str("_DROP_CUBE_")))"""
     return outputList
 
 def main():
     currentPath = "LL"
-    buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT, BTN_SWITCH, BTN_SCALE]
+    buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_EXPORT, BTN_SWITCH, BTN_SCALE, BTN_DROP]
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
     
     pygame.init()
+    font = pygame.font.SysFont('arial', 31, True)
     screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
     pygame.display.set_caption("AutonTool: LL")
     pygame.display.update()
@@ -100,6 +114,25 @@ def main():
         pygame.draw.rect(screen, YELLOW, BTN_EXPORT, 0)
         pygame.draw.rect(screen, GREEN, BTN_SWITCH, 0)
         pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
+        pygame.draw.rect(screen, GREEN, BTN_DROP, 0)
+        
+        text0 = font.render('LL', True, (0, 0, 0))
+        text1 = font.render('LR', True, (0, 0, 0))
+        text2 = font.render('RL', True, (0, 0, 0))
+        text3 = font.render('RR', True, (0, 0, 0))
+        text4 = font.render('EXPORT', True, (0, 0, 0))
+        text5 = font.render('SWITCH', True, (0, 0, 0))
+        text6 = font.render('SCALE', True, (0, 0, 0))
+        text7 = font.render('DROP', True, (0, 0, 0))
+        
+        screen.blit(text0, BTN_LL.topleft)
+        screen.blit(text1, BTN_LR.topleft)
+        screen.blit(text2, BTN_RL.topleft)
+        screen.blit(text3, BTN_RR.topleft)
+        screen.blit(text4, BTN_EXPORT.topleft)
+        screen.blit(text5, BTN_SWITCH.topleft)
+        screen.blit(text6, BTN_SCALE.topleft)
+        screen.blit(text7, BTN_DROP.topleft)
         
         drawPath(screen, paths[currentPath])
         
@@ -114,14 +147,14 @@ def main():
                     print(event.pos)
                     if len(paths[currentPath]) == 0:
                         start_x = event.pos[0]
-                        paths[currentPath].append((start_x, STARTING_Y))
+                        paths[currentPath].append((start_x, STARTING_Y, 0))
                     elif len(paths[currentPath]) == 1:
-                        paths[currentPath].append((start_x, event.pos[1]))
+                        paths[currentPath].append((start_x, event.pos[1], 0))
                     else:
                         if abs(calcAngle(paths[currentPath][-1], event.pos)) > 5:
-                            paths[currentPath].append(event.pos)
+                            paths[currentPath].append((event.pos[0], event.pos[1], 0))
                         else:
-                            paths[currentPath].append((paths[currentPath][-1][0], event.pos[1]))
+                            paths[currentPath].append((paths[currentPath][-1][0], event.pos[1], 0))
                 if event.pos[1] >= 479:
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos) == 1:
@@ -139,35 +172,36 @@ def main():
                         outputListLR = outputPath(paths["LR"])
                         outputListRL = outputPath(paths["RL"])
                         outputListRR = outputPath(paths["RR"])
-                        outputLL = ""
-                        outputLR = ""
-                        outputRL = ""
-                        outputRR = ""
+                        outputLL = "LL,"
+                        outputLR = "LR,"
+                        outputRL = "RL,"
+                        outputRR = "RR,"
                         
                         for output in outputListLL:
-                            outputLL += output[0] + output[1]
+                            outputLL += output[0] + output[1] + output[2]
                         for output in outputListLR:
-                            outputLR += output[0] + output[1]
+                            outputLR += output[0] + output[1] + output[2]
                         for output in outputListRL:
-                            outputRL += output[0] + output[1]
+                            outputRL += output[0] + output[1] + output[2]
                         for output in outputListRR:
-                            outputRR += output[0] + output[1]
+                            outputRR += output[0] + output[1] + output[2]
                             
-                        print("LL: " + outputLL)
-                        print("LR: " + outputLR)
-                        print("RL: " + outputRL)
-                        print("RR: " + outputRR)
+                        print(outputLL)
+                        print(outputLR)
+                        print(outputRL)
+                        print(outputRR)
                     elif indexClicked == 5:
-                        pass
+                        paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 1))
                     elif indexClicked == 6:
-                        pass
+                        paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 2))
+                    elif indexClicked == 7:
+                        paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 3))
                     pygame.display.set_caption("AutonTool: " + currentPath)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 2:
+                pass
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 if len(paths[currentPath]) > 0:
                     paths[currentPath].pop(-1)
-                
-                
-    
     pygame.quit()
     quit()
 
