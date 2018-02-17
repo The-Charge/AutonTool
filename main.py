@@ -7,7 +7,20 @@ SCREEN_X = 421
 SCREEN_Y = 600
 
 # Center of robot at start
-STARTING_Y = 435
+STARTING_Y = 447
+
+#Initial invalid zones
+LEFT_BOUND = 79
+RIGHT_BOUND = 342
+TOP_BOUND = 50
+CONTROL_BORDER = 479
+EXCHANGE_LEFT = 117
+EXCHANGE_RIGHT = 221
+
+#Switch and Scales
+SWITCH = pygame.Rect((121, 239, 178, 64))
+SCALE_LEFT = pygame.Rect((0, 0, 0, 0))
+SCALE_RIGHT = pygame.Rect((0, 0, 0, 0))
 
 # Conversion factors
 PIXELS_PER_FOOT = 13.75
@@ -56,12 +69,11 @@ def drawPath(screen, path):
 	for x in range(len(path) - 1):
 		last_point = path[x]
 		next_point = path[x + 1]
-		angle = calcAngle(last_point[:2], next_point[:2])
-		if x == len(path)-2 and angle == 999:
-			angle = previousAngle
-		drawRobot(screen, last_point[:2], angle, BLUE)
-		drawRobot(screen, next_point[:2], angle, RED)
-		pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
+		if next_point[:2] != last_point[:2]:
+			angle = calcAngle(last_point[:2], next_point[:2])
+			drawRobot(screen, last_point[:2], angle, BLUE)
+			drawRobot(screen, next_point[:2], angle, RED)
+			pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
 	if len(path) > 0:
 		drawRobot(screen, path[0][:2], 0, BLUE)
 
@@ -73,16 +85,17 @@ def outputPath(path):
 			p1 = path[x][:2]
 			p2 = path[x + 1][:2]
 			angle = calcAngle(p1, p2)
-			if angle != 0 and angle != 999:
-				outputList.append([str(round(angle, 2)), "dg,"])
+			if angle != 999:
+				if not (x == 0 and angle == 0):
+					outputList.append([str(round(angle, 2)), "dg,"])
 			distance = calcDist(p2, p1) / PIXELS_PER_FOOT
 			if distance != 0:
 				outputList.append([str(round(distance, 2)), "ft,"])
-		if path[x][2] == 1:
+		if path[x][2] == 1 and path[x-1][2] != 1:
 			outputList.append(["", "2el,"])
-		if path[x][2] == 2:
+		if path[x][2] == 2 and path[x-1][2] != 2:
 			outputList.append(["", "5el,"])
-		if path[x][2] == 3:
+		if path[x][2] == 3 and path[x-1][2] != 3:
 			outputList.append(["", "cl,"])
 	return outputList
 
@@ -151,24 +164,37 @@ def main():
 			if event.type == pygame.QUIT:
 				finished = True
 			if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-				if event.pos[1] < 479 and event.pos[1]  > 50:
+				if SWITCH.collidepoint(event.pos) == True:
+					print("switch hit")
+				if event.pos[1] < CONTROL_BORDER and event.pos[1]  > TOP_BOUND:
 					if len(paths[currentPath]) == 0:
 						start_x = event.pos[0]
+						if start_x < LEFT_BOUND:
+							start_x = LEFT_BOUND
+						if start_x > RIGHT_BOUND:
+							start_x = RIGHT_BOUND
+						if start_x > EXCHANGE_LEFT and start_x < EXCHANGE_LEFT + 52:
+							start_x = EXCHANGE_LEFT
+						if start_x < EXCHANGE_RIGHT and start_x >= EXCHANGE_RIGHT - 52:
+							start_x = EXCHANGE_RIGHT
 						paths[currentPath].append((start_x, STARTING_Y, 0))
 					elif len(paths[currentPath]) == 1:
-						paths[currentPath].append((start_x, event.pos[1], 0))
+						if SWITCH.collidepoint(event.pos) == False:
+							paths[currentPath].append((start_x, event.pos[1], 0))
 					else:
-						angle = abs(calcAngle(paths[currentPath][-1], event.pos))
-						if angle < 5 or (angle > 175 or angle < -175):
-							paths[currentPath].append((paths[currentPath][-1][0], event.pos[1], 0))
-						elif angle > 85 and angle < 95:
-							paths[currentPath].append((event.pos[0], paths[currentPath][-1][1], 0))
-						else:
-							paths[currentPath].append((event.pos[0], event.pos[1], 0))
+						if SWITCH.collidepoint(event.pos) == False:
+							angle = abs(calcAngle(paths[currentPath][-1], event.pos))
+							if angle != 999:
+								if angle < 5 or (angle > 175 or angle < -175):
+									paths[currentPath].append((paths[currentPath][-1][0], event.pos[1], 0))
+								elif angle > 85 and angle < 95:
+									paths[currentPath].append((event.pos[0], paths[currentPath][-1][1], 0))
+								else:
+									paths[currentPath].append((event.pos[0], event.pos[1], 0))
 					print(paths[currentPath][-1])
-				if event.pos[1] >= 479:
+				if event.pos[1] >= CONTROL_BORDER:
 					for x in range(len(buttonSizes)):
-						if buttonSizes[x].collidepoint(event.pos) == 1:
+						if buttonSizes[x].collidepoint(event.pos) == True:
 							indexClicked = x
 					if indexClicked == 0:
 						currentPath = "LL"
