@@ -47,6 +47,7 @@ def drawRobot(screen, point, angle, color):
 	for i in range(len(x_points)):
 		points.append([x_points[i], y_points[i]])
 	pygame.draw.polygon(screen, color, points, 1)
+	pygame.draw.line(screen, (0, 0, 0), points[3], points[0], 2)
 
 def drawPath(screen, path):
 	for point in path:
@@ -56,6 +57,8 @@ def drawPath(screen, path):
 		last_point = path[x]
 		next_point = path[x + 1]
 		angle = calcAngle(last_point[:2], next_point[:2])
+		if x == len(path)-2 and angle == 999:
+			angle = previousAngle
 		drawRobot(screen, last_point[:2], angle, BLUE)
 		drawRobot(screen, next_point[:2], angle, RED)
 		pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
@@ -65,22 +68,22 @@ def drawPath(screen, path):
 #Takes in a list of coordinates and instructions and returns a string of distances and angles
 def outputPath(path):
 	outputList = []
-	for x in range(len(path) - 1):
-		if path[x][2] == 0:
+	for x in range(len(path)):
+		if path[x][2] == 0 and x != len(path)-1:
 			p1 = path[x][:2]
 			p2 = path[x + 1][:2]
 			angle = calcAngle(p1, p2)
-			if angle != 0:
+			if angle != 0 and angle != 999:
 				outputList.append([str(round(angle, 2)), "dg,"])
 			distance = calcDist(p2, p1) / PIXELS_PER_FOOT
 			if distance != 0:
 				outputList.append([str(round(distance, 2)), "ft,"])
-		elif path[x][2] == 1:
-			outputList.append(["", "el1,"])
-		elif path[x][2] == 2:
-			outputList.append(["", "el2,"])
-		elif path[x][2] == 3:
-			outputList.append(["", "drop,"])
+		if path[x][2] == 1:
+			outputList.append(["", "2el,"])
+		if path[x][2] == 2:
+			outputList.append(["", "5el,"])
+		if path[x][2] == 3:
+			outputList.append(["", "cl,"])
 	return outputList
 
 def main():
@@ -100,10 +103,7 @@ def main():
 	
 	finished = False
 	
-	global previousAngle
-	
 	while not finished:
-		#screen.fill((255, 255, 255))
 		screen.blit(background, backgroundRect)
 		
 		pygame.draw.rect(screen, GREEN, BTN_LL, 0)
@@ -115,10 +115,19 @@ def main():
 		pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
 		pygame.draw.rect(screen, GREEN, BTN_DROP, 0)
 		
-		text0 = font.render('LL', True, (0, 0, 0))
-		text1 = font.render('LR', True, (0, 0, 0))
-		text2 = font.render('RL', True, (0, 0, 0))
-		text3 = font.render('RR', True, (0, 0, 0))
+		if (currentPath == "LL"):
+			pygame.draw.rect(screen, (0, 0, 0), BTN_LL, 2)
+		elif (currentPath == "LR"):
+			pygame.draw.rect(screen, (0, 0, 0), BTN_LR, 2)
+		elif (currentPath == "RL"):
+			pygame.draw.rect(screen, (0, 0, 0), BTN_RL, 2)
+		elif (currentPath == "RR"):
+			pygame.draw.rect(screen, (0, 0, 0), BTN_RR, 2)
+		
+		text0 = font.render(' LL', True, (0, 0, 0))
+		text1 = font.render(' LR', True, (0, 0, 0))
+		text2 = font.render(' RL', True, (0, 0, 0))
+		text3 = font.render(' RR', True, (0, 0, 0))
 		text4 = font.render('EXPORT', True, (0, 0, 0))
 		text5 = font.render('SWITCH', True, (0, 0, 0))
 		text6 = font.render('SCALE', True, (0, 0, 0))
@@ -142,17 +151,20 @@ def main():
 			if event.type == pygame.QUIT:
 				finished = True
 			if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-				if event.pos[1] < 479:
+				if event.pos[1] < 479 and event.pos[1]  > 50:
 					if len(paths[currentPath]) == 0:
 						start_x = event.pos[0]
 						paths[currentPath].append((start_x, STARTING_Y, 0))
 					elif len(paths[currentPath]) == 1:
 						paths[currentPath].append((start_x, event.pos[1], 0))
 					else:
-						if abs(calcAngle(paths[currentPath][-1], event.pos)) > 5:
-							paths[currentPath].append((event.pos[0], event.pos[1], 0))
-						else:
+						angle = abs(calcAngle(paths[currentPath][-1], event.pos))
+						if angle < 5 or (angle > 175 or angle < -175):
 							paths[currentPath].append((paths[currentPath][-1][0], event.pos[1], 0))
+						elif angle > 85 and angle < 95:
+							paths[currentPath].append((event.pos[0], paths[currentPath][-1][1], 0))
+						else:
+							paths[currentPath].append((event.pos[0], event.pos[1], 0))
 					print(paths[currentPath][-1])
 				if event.pos[1] >= 479:
 					for x in range(len(buttonSizes)):
@@ -167,6 +179,8 @@ def main():
 					elif indexClicked == 3:
 						currentPath = "RR"
 					elif indexClicked == 4:
+						for x in range(1000):
+							pygame.draw.rect(screen, (0, 0, 0), BTN_EXPORT, 2)
 						outputListLL = outputPath(paths["LL"])
 						outputListLR = outputPath(paths["LR"])
 						outputListRL = outputPath(paths["RL"])
@@ -228,17 +242,16 @@ def calcAngle(p1, p2):
 	elif delta_x == 0 and delta_y < 0:
 		theta = -90
 	elif delta_x == 0 and delta_y == 0:
-		theta = 0
+		return 999
 	else:
 		theta = math.degrees(math.atan2(delta_y, delta_x))
-		
+	
 	theta -= 90
-	if theta < -180:
+	while theta < -180:
 		theta += 360
 	
 	if theta != 180 and theta != 0:
 		theta *= -1
-	
 	return theta
 	
 if __name__=="__main__":
