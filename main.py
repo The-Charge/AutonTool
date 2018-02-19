@@ -63,7 +63,7 @@ ROBOT_PIXELS_HALF = [int(dim * PIXELS_PER_FOOT / 2) for dim in ROBOT_DIMS_FEET]
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
 
 #Draws buttons
-def drawControls(screen, currentPath, paths, reversed):
+def drawControls(screen, currentPath, paths, reversed, cloning):
 	font = pygame.font.SysFont('arial', 22, True)
 	
 	text0 = font.render(' LL', True, BLACK)
@@ -125,6 +125,12 @@ def drawControls(screen, currentPath, paths, reversed):
 	
 	if reversed[currentPath]:
 		pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
+	
+	if cloning:
+		pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
+		
+	if paths["LL"] == paths["LR"] and paths["LL"] == paths["RL"] and paths["LL"] == paths["RR"] and paths["LL"] != []:
+		pygame.draw.rect(screen, BLACK, BTN_ALL, 2)
 	
 	screen.blit(text0, BTN_LL.topleft)
 	screen.blit(text1, BTN_LR.topleft)
@@ -252,6 +258,13 @@ def snapToGrid(pos, path, angle):
 		pos[1] = path[-1][1]
 	return pos
 
+#Not sure how aliasing works in python, so it uses a completely different list
+def clone(path):
+	newPath = []
+	for point in path:
+		newPath.append(point)
+	return newPath
+	
 def main():
 	currentPath = "LL"
 	buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_CLONE, BTN_ALL, BTN_EXPORT, BTN_DTC, BTN_SWITCH, BTN_SCALE, BTN_WAIT, BTN_DROP, BTN_REVERSE]
@@ -266,19 +279,19 @@ def main():
 	background = pygame.image.load("Field.png")
 	backgroundRect = background.get_rect()
 	
-	indexClicked = 4
+	cloning = False
 	finished = False
 	
 	while not finished:
 		screen.blit(background, backgroundRect)
-		drawControls(screen, currentPath, paths, reversed)
+		drawControls(screen, currentPath, paths, reversed, cloning)
 		drawPath(screen, paths[currentPath])
 		pygame.display.flip()
+		
 		if len(paths[currentPath]) < 2:
 			reversed[currentPath] = False
 		
 		for event in pygame.event.get():
-			#print(event)
 			if event.type == pygame.QUIT:
 				finished = True
 			if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -312,7 +325,7 @@ def main():
 						elif pos[1]+buffer > LOWER_BOUND:
 							pos[1] = LOWER_BOUND-buffer
 						
-						#MORE CORRECTION CODE HERE
+						#MORE CORRECTION CODE HERE (if time)
 						
 						if reversed[currentPath]:
 							if paths[currentPath][-1][2] != (pos[0], pos[1], 5):
@@ -326,17 +339,44 @@ def main():
 						if buttonSizes[x].collidepoint(event.pos):
 							indexClicked = x
 					if indexClicked == 0:
-						currentPath = "LL"
+						if not cloning:
+							currentPath = "LL"
+						else:
+							paths["LL"] = clone(paths[currentPath])
+							cloning = False
+							currentPath = "LL"
 					elif indexClicked == 1:
-						currentPath = "LR"
+						if not cloning:
+							currentPath = "LR"
+						else:
+							paths["LR"] = clone(paths[currentPath])
+							cloning = False
+							currentPath = "LR"
 					elif indexClicked == 2:
-						currentPath = "RL"
+						if not cloning:
+							currentPath = "RL"
+						else:
+							paths["RL"] = clone(paths[currentPath])
+							cloning = False
+							currentPath = "RL"
 					elif indexClicked == 3:
-						currentPath = "RR"
+						if not cloning:
+							currentPath = "RR"
+						else:
+							paths["RR"] = clone(paths[currentPath])
+							cloning = False
+							currentPath = "RR"
 					elif indexClicked == 4:
-						pass
+						cloning = not cloning
 					elif indexClicked == 5:
-						pass
+						if currentPath != "LL":
+							paths["LL"] = clone(paths[currentPath])
+						if currentPath != "LR":
+							paths["LR"] = clone(paths[currentPath])
+						if currentPath != "RL":
+							paths["RL"] = clone(paths[currentPath])
+						if currentPath != "RR":
+							paths["RR"] = clone(paths[currentPath])
 					elif indexClicked == 6:
 						outputLL = "LL," + outputPath(paths["LL"])
 						outputLR = "LR," + outputPath(paths["LR"])
