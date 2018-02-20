@@ -16,6 +16,15 @@ CONTROL_BORDER = 479
 EXCHANGE_LEFT = 117
 EXCHANGE_RIGHT = 221
 
+#Other robot instructions
+FORWARD = 0
+REVERSE = 1
+SWITCH_POSITION = 2
+SCALE_POSITION = 4
+OPEN_CLAW = 5
+DRIVE_TO_CURRENT_SWITCH = 6
+DRIVE_TO_CURRENT_SCALE = 7
+
 #Field barriers
 LEFT_WALL = 22
 RIGHT_WALL = 401
@@ -23,7 +32,7 @@ TOP_BOUND = 48
 LOWER_BOUND = 468
 
 #Switch and Scales
-SWITCH = pygame.Rect((121, 239, 180 , 64))
+SWITCH = pygame.Rect((121, 239, 180, 64))
 SWITCH_LEFT = pygame.Rect((126, 241, 43, 57))
 SWITCH_RIGHT = pygame.Rect((253, 241, 43, 57))
 SCALE = pygame.Rect((105, 59, 212, 56))
@@ -63,7 +72,7 @@ ROBOT_PIXELS_HALF = [int(dim * PIXELS_PER_FOOT / 2) for dim in ROBOT_DIMS_FEET]
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
 
 #Draws buttons
-def drawControls(screen, currentPath, paths, reversed, cloning):
+def drawControls(screen, currentPath, paths, reversed, cloning, driveToCurrent):
 	font = pygame.font.SysFont('arial', 22, True)
 	
 	text0 = font.render(' LL', True, BLACK)
@@ -114,23 +123,23 @@ def drawControls(screen, currentPath, paths, reversed, cloning):
 		pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
 	
 	if len(paths[currentPath]) > 0:
-		if paths[currentPath][-1][2] == 1:
+		if paths[currentPath][-1][2] == DRIVE_TO_CURRENT_SWITCH or paths[currentPath][-1][2] == DRIVE_TO_CURRENT_SCALE:
 			pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
-		elif paths[currentPath][-1][2] == 2:
+		elif paths[currentPath][-1][2] == SWITCH_POSITION:
 			pygame.draw.rect(screen, BLACK, BTN_SWITCH, 2)
-		elif paths[currentPath][-1][2] == 3:
+		elif paths[currentPath][-1][2] == SCALE_POSITION:
 			pygame.draw.rect(screen, BLACK, BTN_SCALE, 2)
-		elif paths[currentPath][-1][2] == 4:
+		elif paths[currentPath][-1][2] == OPEN_CLAW:
 			pygame.draw.rect(screen, BLACK, BTN_DROP, 2)
 	
 	if reversed[currentPath]:
 		pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
-	
 	if cloning:
 		pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
-		
 	if paths["LL"] == paths["LR"] and paths["LL"] == paths["RL"] and paths["LL"] == paths["RR"] and paths["LL"] != []:
 		pygame.draw.rect(screen, BLACK, BTN_ALL, 2)
+	if driveToCurrent[currentPath] != 0:
+		pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
 	
 	screen.blit(text0, BTN_LL.topleft)
 	screen.blit(text1, BTN_LR.topleft)
@@ -170,7 +179,7 @@ def drawPath(screen, path):
 		next_point = path[x + 1]
 		if next_point[:2] != last_point[:2]:
 			angle = calcAngle(last_point[:2], next_point[:2])
-			if next_point[2] == 5:
+			if next_point[2] == REVERSE:
 				if angle < 0:
 					angle += 180
 				else:
@@ -181,41 +190,43 @@ def drawPath(screen, path):
 	if len(path) > 0:
 		drawRobot(screen, path[0][:2], 0, BLUE)
 
-#Takes in a list of coordinates and instructions and returns a string of distances and angles
+#Takes in a list of coordinates and instructions and prints auton commands
 def outputPath(path):
-	output = ""
 	previousAngle = 0
+	print("addSequential(new ShiftLow());")
+	#change later
 	for x in range(len(path)):
 		if len(path) > 0:
-			if path[x][2] == 1:
-				output += "dc,"
-			elif path[x][2] == 2:
-				output += "2el,"
-			elif path[x][2] == 3:
-				output += "5el,"
-			elif path[x][2] == 4:
-				output += "cl,"
+			if path[x][2] == DRIVE_TO_CURRENT_SWITCH:
+				print("addSequential(new DriveToCurrent(.2, 5));")
+			if path[x][2] == DRIVE_TO_CURRENT_SCALE:
+				print("addSequential(new DriveToCurrent(.07, 1);")
+			elif path[x][2] == SWITCH_POSITION:
+				print("addParallel(new ElevateToXPos(2));")
+			elif path[x][2] == SCALE_POSITION:
+				print("addParallel(new ElevateToXPos(5));")
+			elif path[x][2] == OPEN_CLAW:
+				print("addSequential(new OpenClaw());")
+				#change later
 		if x != len(path)-1:
 			p1 = path[x]
 			p2 = path[x + 1]
 			angle = calcAngle(p1[:2], p2[:2])
-			if p2[2] == 5:
+			if p2[2] == REVERSE:
 				if angle < 0:
 					angle += 180
 				else:
 					angle -= 180
 			if angle != 999 and angle != previousAngle and x != 0:
-				output += (str(round(angle, 2)) + "dg,")
+				print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
 			if angle != 999:
 				previousAngle = angle
 			distance = calcDist(p2[:2], p1[:2]) / PIXELS_PER_FOOT
-			if distance != 0:
-				if p2[2] == 0:
-					output += (str(round(distance, 2)) + "ft,")
-				elif p2[2] == 5:
-					output += (str(round(distance, 2)) + "rv,")
-	return output
-
+			if p2[2] == REVERSE:
+				distance = -1 * distance
+			if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
+				print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
+h
 #Checks boundaries of starting position
 def checkStart(xpos):
 	if xpos < LEFT_BOUND:
@@ -231,7 +242,7 @@ def checkStart(xpos):
 #Checks boundaries of first move
 def checkFirstMove(point, path):
 	if path[-1][0]+ROBOT_PIXELS_HALF[0] > SCALE.left and path[-1][0]-ROBOT_PIXELS_HALF[0] < SCALE.right:
-		if path[-1][0]+ROBOT_PIXELS_HALF[0] > SWITCH.left and [-1][0]-ROBOT_PIXELS_HALF[0] < SWITCH.right:
+		if path[-1][0]+ROBOT_PIXELS_HALF[0] > SWITCH.left and path[-1][0]-ROBOT_PIXELS_HALF[0] < SWITCH.right:
 			if point[1]-ROBOT_PIXELS_HALF[1] < SWITCH.bottom:
 				ypos = SWITCH.bottom+ROBOT_PIXELS_HALF[1]
 			else:
@@ -269,8 +280,9 @@ def main():
 	currentPath = "LL"
 	buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_CLONE, BTN_ALL, BTN_EXPORT, BTN_DTC, BTN_SWITCH, BTN_SCALE, BTN_WAIT, BTN_DROP, BTN_REVERSE]
 	paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
-	previousAngles = {"LL":0, "LR":0, "RL":0, "LL":0}
 	reversed = {"LL":False, "LR":False, "RL":False, "RR":False}
+	driveToCurrent = {"LL":False, "LR":False, "RL":False, "RR":False}
+	elevatorPosition = {"LL":0, "LR":0, "RL":0, "RR":0}
 	
 	pygame.init()
 	screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
@@ -279,17 +291,20 @@ def main():
 	background = pygame.image.load("Field.png")
 	backgroundRect = background.get_rect()
 	
+	moved = False
 	cloning = False
 	finished = False
 	
 	while not finished:
 		screen.blit(background, backgroundRect)
-		drawControls(screen, currentPath, paths, reversed, cloning)
+		drawControls(screen, currentPath, paths, reversed, cloning, driveToCurrent)
 		drawPath(screen, paths[currentPath])
 		pygame.display.flip()
 		
 		if len(paths[currentPath]) < 2:
 			reversed[currentPath] = False
+		if len(paths[currentPath]) < 1:
+			driveToCurrent[currentPath] = False
 		
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -299,10 +314,14 @@ def main():
 					if len(paths[currentPath]) == 0:
 						start_x = event.pos[0]
 						start_x = checkStart(start_x)
-						paths[currentPath].append((start_x, STARTING_Y, 0))
+						paths[currentPath].append((start_x, STARTING_Y, FORWARD))
 					elif len(paths[currentPath]) == 1:
 						firstMove = checkFirstMove(event.pos, paths[currentPath])
-						paths[currentPath].append((start_x, firstMove, 0))
+						if driveToCurrent[currentPath]:
+							paths[currentPath].append((start_x, firstMove, DRIVE_TO_CURRENT_SCALE))
+							driveToCurrent[currentPath] = False
+						else:
+							paths[currentPath].append((start_x, firstMove, FORWARD))
 					else:
 						pos = [event.pos[0], event.pos[1]]
 						angle = calcAngle(paths[currentPath][-1], pos)
@@ -323,16 +342,16 @@ def main():
 						if pos[1]-buffer < TOP_BOUND:
 							pos[1] = TOP_BOUND+buffer
 						elif pos[1]+buffer > LOWER_BOUND:
-							pos[1] = LOWER_BOUND-buffer
+							pos[1] = LOWER_BOUND-buffer						
 						
 						#MORE CORRECTION CODE HERE (if time)
 						
 						if reversed[currentPath]:
-							if paths[currentPath][-1][2] != (pos[0], pos[1], 5):
-								paths[currentPath].append((pos[0], pos[1], 5))
+							if paths[currentPath][-1][2] != (pos[0], pos[1], REVERSE):
+								paths[currentPath].append((pos[0], pos[1], REVERSE))
 						else:
-							if paths[currentPath][-1][2] != (pos[0], pos[1], 0):
-								paths[currentPath].append((pos[0], pos[1], 0))
+							if paths[currentPath][-1][2] != (pos[0], pos[1], FORWARD):
+								paths[currentPath].append((pos[0], pos[1], FORWARD))
 					print(paths[currentPath][-1])
 				if event.pos[1] >= CONTROL_BORDER:
 					for x in range(len(buttonSizes)):
@@ -343,6 +362,8 @@ def main():
 							currentPath = "LL"
 						else:
 							paths["LL"] = clone(paths[currentPath])
+							reversed["LL"] = reversed[currentPath]
+							driveToCurrent["LL"] = driveToCurrent[currentPath]
 							cloning = False
 							currentPath = "LL"
 					elif indexClicked == 1:
@@ -350,6 +371,8 @@ def main():
 							currentPath = "LR"
 						else:
 							paths["LR"] = clone(paths[currentPath])
+							reversed["LR"] = reversed[currentPath]
+							driveToCurrent["LR"] = driveToCurrent[currentPath]
 							cloning = False
 							currentPath = "LR"
 					elif indexClicked == 2:
@@ -357,6 +380,8 @@ def main():
 							currentPath = "RL"
 						else:
 							paths["RL"] = clone(paths[currentPath])
+							reversed["RL"] = reversed[currentPath]
+							driveToCurrent["RL"] = driveToCurrent[currentPath]
 							cloning = False
 							currentPath = "RL"
 					elif indexClicked == 3:
@@ -364,6 +389,8 @@ def main():
 							currentPath = "RR"
 						else:
 							paths["RR"] = clone(paths[currentPath])
+							reversed["RR"] = reversed[currentPath]
+							driveToCurrent["RR"] = driveToCurrent[currentPath]
 							cloning = False
 							currentPath = "RR"
 					elif indexClicked == 4:
@@ -378,31 +405,33 @@ def main():
 						if currentPath != "RR":
 							paths["RR"] = clone(paths[currentPath])
 					elif indexClicked == 6:
-						outputLL = "LL," + outputPath(paths["LL"])
-						outputLR = "LR," + outputPath(paths["LR"])
-						outputRL = "RL," + outputPath(paths["RL"])
-						outputRR = "RR," + outputPath(paths["RR"])
-						print(outputLL)
-						print(outputLR)
-						print(outputRL)
-						print(outputRR)
-					elif indexClicked == 7:	
-						if len(paths[currentPath]) > 1:
-							pass
+						print("\n----------------------------------------\n-----LL-----")
+						outputPath(paths["LL"])
+						print("\n-----LR-----")
+						outputPath(paths["LR"])
+						print("\n-----RL-----")
+						outputPath(paths["RL"])
+						print("\n-----RR-----")
+						outputPath(paths["RR"])
+					elif indexClicked == 7:
+						if len(paths[currentPath]) > 1 and elevatorPosition[currentPath] != 0:
+							driveToCurrent[currentPath] = not driveToCurrent[currentPath]
 					elif indexClicked == 8:
-						if len(paths[currentPath]) > 1:
-							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 2))
+						if len(paths[currentPath]) > 0:
+							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
+							elevatorPosition[currentPath] = SWITCH_POSITION
 							print(paths[currentPath][-1])
 					elif indexClicked == 9:
-						if len(paths[currentPath]) > 1:
-							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 3))
+						if len(paths[currentPath]) > 0:
+							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
+							elevatorPosition[currentPath] = SCALE_POSITION
 							print(paths[currentPath][-1])
 					elif indexClicked == 10:
 						pass
 						#BTN_WAIT
 					elif indexClicked == 11:
 						if len(paths[currentPath]) > 1:
-							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], 4))
+							paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
 							print(paths[currentPath][-1])
 					elif indexClicked == 12:
 						if len(paths[currentPath]) > 1:
