@@ -20,11 +20,12 @@ EXCHANGE_RIGHT = 221
 FORWARD = 0
 REVERSE = 1
 SWITCH_POSITION = 2
-SCALE_POSITION = 4
-OPEN_CLAW = 5
-DRIVE_TO_CURRENT_SWITCH = 6
-DRIVE_TO_CURRENT_SCALE = 7
-STARTING = 8
+SCALE_POSITION = 3
+OPEN_CLAW = 4
+DRIVE_TO_CURRENT_SWITCH = 5
+DRIVE_TO_CURRENT_SCALE = 6
+STARTING = 7
+#timeouts will be -(value)
 
 #Field barriers
 LEFT_WALL = 22
@@ -75,7 +76,7 @@ FRONT = int(ROBOT_DIMS_FEET[1] * PIXELS_PER_FOOT / 2)
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
 
 #Draws buttons
-def drawControls(screen, currentPath, paths, reversed, cloning, driveToCurrent, elevatorPosition, clawOpen):
+def drawControls(screen, currentPath, paths, variables, cloning):
     font = pygame.font.SysFont('arial', 22, True)
     
     text0 = font.render(' LL', True, BLACK)
@@ -125,25 +126,24 @@ def drawControls(screen, currentPath, paths, reversed, cloning, driveToCurrent, 
         pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
         pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
     
-        #elif paths[currentPath][-1][2] == OPEN_CLAW:
-            #pygame.draw.rect(screen, BLACK, BTN_DROP, 2)
-    
-    if reversed[currentPath]:
+    if variables[currentPath]["reversed"]:
         pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
     if cloning:
         pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
     if paths["LL"] == paths["LR"] and paths["LL"] == paths["RL"] and paths["LL"] == paths["RR"] and paths["LL"] != []:
         pygame.draw.rect(screen, BLACK, BTN_ALL, 2)
-    if driveToCurrent[currentPath] == True:
+    if variables[currentPath]["driveToCurrent"]:
         pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
-    if elevatorPosition[currentPath] == SWITCH_POSITION:
+    if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
         pygame.draw.rect(screen, BLACK, BTN_SWITCH, 2)
-    if elevatorPosition[currentPath] == SCALE_POSITION:
+    if variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
         pygame.draw.rect(screen, BLACK, BTN_SCALE, 2)
-    if driveToCurrent[currentPath]:
+    if variables[currentPath]["driveToCurrent"]:
         pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
-    if clawOpen[currentPath]:
+    if variables[currentPath]["clawOpen"]:
         pygame.draw.rect(screen, BLACK, BTN_DROP, 2)
+    if variables[currentPath]["waitInput"]:
+        pygame.draw.rect(screen, BLACK, BTN_WAIT, 2)
     
     screen.blit(text0, BTN_LL.topleft)
     screen.blit(text1, BTN_LR.topleft)
@@ -200,6 +200,9 @@ def outputPath(path):
     print("addSequential(new ShiftLow());")
     for x in range(len(path)):
         if len(path) > 0:
+            if path[x][2] < 0:
+                time = -1 * path[x][2]
+                print("addTimeOut(%s);" % time)
             if path[x][2] == DRIVE_TO_CURRENT_SWITCH:
                 print("addSequential(new DriveToCurrent(.2, 5));")
             if path[x][2] == DRIVE_TO_CURRENT_SCALE:
@@ -229,7 +232,7 @@ def outputPath(path):
             if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
                 print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
 
-#Checks boundaries of starting position 
+#Checks boundaries of starting position
 def checkStart(xpos):
     if xpos < LEFT_BOUND:
         xpos = LEFT_BOUND
@@ -274,10 +277,10 @@ def main():
     currentPath = "LL"
     buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_CLONE, BTN_ALL, BTN_EXPORT, BTN_DTC, BTN_SWITCH, BTN_SCALE, BTN_WAIT, BTN_DROP, BTN_REVERSE]
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
-    reversed = {"LL":False, "LR":False, "RL":False, "RR":False}
-    driveToCurrent = {"LL":False, "LR":False, "RL":False, "RR":False}
-    elevatorPosition = {"LL":0, "LR":0, "RL":0, "RR":0}
-    clawOpen = {"LL":False, "LR":False, "RL":False, "RR":False}
+    variables = {"LL":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}, \
+                 "LR":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}, \
+                 "RL":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}, \
+                 "RR":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}}
     
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
@@ -285,25 +288,30 @@ def main():
     pygame.display.update()
     background = pygame.image.load("Field.png")
     backgroundRect = background.get_rect()
+    integerList = []
+    decimalList = []
     cloning = False
     finished = False
     
     while not finished:
         screen.blit(background, backgroundRect)
-        drawControls(screen, currentPath, paths, reversed, cloning, driveToCurrent, elevatorPosition, clawOpen)
+        drawControls(screen, currentPath, paths, variables, cloning)
         drawPath(screen, paths[currentPath])
         pygame.display.flip()
         
         if len(paths[currentPath]) < 2:
-            reversed[currentPath] = False
+            variables[currentPath]["reversed"] = False
         if len(paths[currentPath]) < 1:
-            driveToCurrent[currentPath] = False
+            variables[currentPath]["driveToCurrent"] = False
+            variables[currentPath]["waitInput"] = False
+        waitInput = variables[currentPath]["waitInput"]
+        
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 finished = True
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                if event.pos[1] < CONTROL_BORDER:
+                if event.pos[1] < CONTROL_BORDER and not waitInput:
                     moved = False
                     for x in paths[currentPath]:
                         if x[2] == FORWARD:
@@ -351,7 +359,7 @@ def main():
                         
                         #MORE CORRECTION CODE HERE (if time)
                         
-                        if driveToCurrent[currentPath]:
+                        if variables[currentPath]["driveToCurrent"]:
                             if angle == 0:
                                 if lastPoint[1]-FRONT > SWITCH.bottom:
                                     if lastPoint[0]+SIDE > SWITCH.left and lastPoint[0]-SIDE < SWITCH.right:
@@ -360,8 +368,7 @@ def main():
                                     if lastPoint[0]+SIDE > SCALE.left and lastPoint[0]-SIDE < SCALE.right:
                                         pos[1] = SCALE.bottom+FRONT
                                 else:
-                                    pos[1]= TOP_BOUND+FRONT
-                                pos[0] = lastPoint[0]
+                                    pos[1]= 0
                             elif angle == 90:
                                 if lastPoint[1]+SIDE > SCALE.top and lastPoint[1]-SIDE < SCALE.bottom:
                                     if lastPoint[0]+FRONT < SCALE.left:
@@ -382,99 +389,70 @@ def main():
                                         pos[0] = SWITCH.right+FRONT
                             else:   #DTC for any angle
                                 pass
-                            if elevatorPosition[currentPath] == SWITCH_POSITION:
+                            if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
                                 paths[currentPath].append((pos[0], pos[1], DRIVE_TO_CURRENT_SWITCH))
                             else:
                                 paths[currentPath].append((pos[0], pos[1], DRIVE_TO_CURRENT_SCALE))
-                        elif reversed[currentPath]:
+                        elif variables[currentPath]["reversed"]:
                             if paths[currentPath][-1][2] != (pos[0], pos[1], REVERSE):
                                 paths[currentPath].append((pos[0], pos[1], REVERSE))
                         else:
                             if paths[currentPath][-1][2] != (pos[0], pos[1], FORWARD):
                                 paths[currentPath].append((pos[0], pos[1], FORWARD))
-                        if driveToCurrent[currentPath] == True:
-                            driveToCurrent[currentPath] = False
+                        variables[currentPath]["driveToCurrent"] = False
                     print(paths[currentPath][-1])
                 if event.pos[1] >= CONTROL_BORDER:
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos):
                             indexClicked = x
-                    if indexClicked == 0:
+                    if indexClicked == 0 and not waitInput:
                         if not cloning:
                             currentPath = "LL"
                         else:
                             paths["LL"] = clone(paths[currentPath])
-                            reversed["LL"] = reversed[currentPath]
-                            driveToCurrent["LL"] = driveToCurrent[currentPath]
-                            elevatorPosition["LL"] = elevatorPosition[currentPath]
-                            clawOpen["LL"] = clawOpen[currentPath]
+                            variables["LL"] = dict(variables[currentPath])
                             cloning = False
                             currentPath = "LL"
-                    elif indexClicked == 1:
+                    elif indexClicked == 1 and not waitInput:
                         if not cloning:
                             currentPath = "LR"
                         else:
                             paths["LR"] = clone(paths[currentPath])
-                            reversed["LR"] = reversed[currentPath]
-                            driveToCurrent["LR"] = driveToCurrent[currentPath]
-                            elevatorPosition["LR"] = elevatorPosition[currentPath]
-                            clawOpen["LR"] = clawOpen[currentPath]
+                            variables["LR"] = dict(variables[currentPath])
                             cloning = False
                             currentPath = "LR"
-                    elif indexClicked == 2:
+                    elif indexClicked == 2 and not waitInput:
                         if not cloning:
                             currentPath = "RL"
                         else:
                             paths["RL"] = clone(paths[currentPath])
-                            reversed["RL"] = reversed[currentPath]
-                            driveToCurrent["RL"] = driveToCurrent[currentPath]
-                            elevatorPosition["RL"] = elevatorPosition[currentPath]
-                            clawOpen["RL"] = clawOpen[currentPath]
+                            variables["RL"] = dict(variables[currentPath])
                             cloning = False
                             currentPath = "RL"
-                    elif indexClicked == 3:
+                    elif indexClicked == 3 and not waitInput:
                         if not cloning:
                             currentPath = "RR"
                         else:
                             paths["RR"] = clone(paths[currentPath])
-                            reversed["RR"] = reversed[currentPath]
-                            driveToCurrent["RR"] = driveToCurrent[currentPath]
-                            elevatorPosition["RR"] = elevatorPosition[currentPath]
-                            clawOpen["RR"] = clawOpen[currentPath]
+                            variables["RR"] = dict(variables[currentPath])
                             cloning = False
                             currentPath = "RR"
-                    elif indexClicked == 4:
+                    elif indexClicked == 4 and not waitInput:
                         cloning = not cloning
-                    elif indexClicked == 5:
+                    elif indexClicked == 5 and not waitInput:
                         if currentPath != "LL":
                             paths["LL"] = clone(paths[currentPath])
-                            paths["LL"] = clone(paths[currentPath])
-                            reversed["LL"] = reversed[currentPath]
-                            driveToCurrent["LL"] = driveToCurrent[currentPath]
-                            elevatorPosition["LL"] = elevatorPosition[currentPath]
-                            clawOpen["LL"] = clawOpen[currentPath]
+                            variables["LL"] = dict(variables[currentPath])
                         if currentPath != "LR":
                             paths["LR"] = clone(paths[currentPath])
-                            paths["LR"] = clone(paths[currentPath])
-                            reversed["LR"] = reversed[currentPath]
-                            driveToCurrent["LR"] = driveToCurrent[currentPath]
-                            elevatorPosition["LR"] = elevatorPosition[currentPath]
-                            clawOpen["LR"] = clawOpen[currentPath]
+                            variables["LR"] = dict(variables[currentPath])
                         if currentPath != "RL":
                             paths["RL"] = clone(paths[currentPath])
-                            paths["RL"] = clone(paths[currentPath])
-                            reversed["RL"] = reversed[currentPath]
-                            driveToCurrent["RL"] = driveToCurrent[currentPath]
-                            elevatorPosition["RL"] = elevatorPosition[currentPath]
-                            clawOpen["RL"] = clawOpen[currentPath]
+                            variables["RL"] = dict(variables[currentPath])
                         if currentPath != "RR":
                             paths["RR"] = clone(paths[currentPath])
-                            paths["RR"] = clone(paths[currentPath])
-                            reversed["RR"] = reversed[currentPath]
-                            driveToCurrent["RR"] = driveToCurrent[currentPath]
-                            elevatorPosition["RR"] = elevatorPosition[currentPath]
-                            clawOpen["RR"] = clawOpen[currentPath]
-                    elif indexClicked == 6:
+                            variables["RR"] = dict(variables[currentPath])
+                    elif indexClicked == 6 and not waitInput:
                         print("\n----------------------------------------\n-----LL-----")
                         outputPath(paths["LL"])
                         print("\n-----LR-----")
@@ -483,57 +461,149 @@ def main():
                         outputPath(paths["RL"])
                         print("\n-----RR-----")
                         outputPath(paths["RR"])
-                    elif indexClicked == 7:
+                    elif indexClicked == 7 and not waitInput:
                         for x in paths[currentPath]:
                             if x[2] == FORWARD:
                                 moved = True
-                        if moved and elevatorPosition[currentPath] != 0:
-                            driveToCurrent[currentPath] = not driveToCurrent[currentPath]
-                            reversed[currentPath] = False
-                    elif indexClicked == 8:
+                        if moved and variables[currentPath]["elevatorPosition"] != 0:
+                            variables[currentPath]["driveToCurrent"] = not variables[currentPath]["driveToCurrent"]
+                            variables[currentPath]["reversed"] = False
+                    elif indexClicked == 8 and not waitInput:
                         if len(paths[currentPath]) > 0:
-                            if elevatorPosition[currentPath] != SWITCH_POSITION:
+                            if variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
-                                elevatorPosition[currentPath] = SWITCH_POSITION
+                                variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                                 print(paths[currentPath][-1])
-                    elif indexClicked == 9:
+                    elif indexClicked == 9 and not waitInput:
                         if len(paths[currentPath]) > 0:
-                            if elevatorPosition[currentPath] != SCALE_POSITION:
+                            if variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
-                                elevatorPosition[currentPath] = SCALE_POSITION
+                                variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                                 print(paths[currentPath][-1])
                     elif indexClicked == 10:
-                        pass
-                        #BTN_WAIT
-                    elif indexClicked == 11:
+                        if len(paths[currentPath]) > 0:
+                            variables[currentPath]["waitInput"] = not variables[currentPath]["waitInput"]
+                            decimal = False
+                            integerList = []
+                            decimalList = []
+                    elif indexClicked == 11 and not waitInput:
                         if len(paths[currentPath]) > 1:
-                            if elevatorPosition[currentPath] != 0 and not clawOpen[currentPath]:
+                            if variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
-                                clawOpen[currentPath] = True
+                                variables[currentPath]["clawOpen"] = True
                                 print(paths[currentPath][-1])
                     elif indexClicked == 12:
                         if len(paths[currentPath]) > 1:
-                            reversed[currentPath] = not reversed[currentPath]
-                            driveToCurrent[currentPath] = False
+                            variables[currentPath]["reversed"] = not variables[currentPath]["reversed"]
+                            variables[currentPath]["driveToCurrent"] = False
                     pygame.display.set_caption("AutonTool: " + currentPath)
-            if event.type == pygame.MOUSEBUTTONUP and event.button == 2:
-                pass
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 if len(paths[currentPath]) > 0:
                     if paths[currentPath][-1][2] == SWITCH_POSITION or paths[currentPath][-1][2] == SCALE_POSITION:
                         if paths[currentPath][-2][2] == SWITCH_POSITION:
-                            elevatorPosition[currentPath] = SWITCH_POSITION
+                            variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                         elif paths[currentPath][-2][2] == SCALE_POSITION:
-                            elevatorPosition[currentPath] = SCALE_POSITION
+                            variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                         else:
-                            elevatorPosition[currentPath] = 0
+                            variables[currentPath]["elevatorPosition"] = 0
                     if paths[currentPath][-1][2] == OPEN_CLAW:
-                        clawOpen[currentPath] = False
+                        variables[currentPath]["clawOpen"] = False
                     if paths[currentPath][-1][2] == REVERSE:
                         if paths[currentPath][-1][2] != REVERSE:
-                            reversed[currentPath] = False
-                    driveToCurrent[currentPath] = False
+                            variables[currentPath]["reversed"] = False
+                    variables[currentPath]["driveToCurrent"] = False
                     paths[currentPath].pop(-1)
+            if event.type == pygame.KEYDOWN and variables[currentPath]["waitInput"]:
+                if event.key == pygame.K_0:
+                    print("0")
+                    if not decimal:
+                        integerList.append(0)
+                    else:
+                        decimalList.append(0)
+                elif event.key == pygame.K_1:
+                    print("1")
+                    if not decimal:
+                        integerList.append(1)
+                    else:
+                        decimalList.append(1)
+                elif event.key == pygame.K_2:
+                    print("2")
+                    if not decimal:
+                        integerList.append(2)
+                    else:
+                        decimalList.append(2)
+                elif event.key == pygame.K_3:
+                    print("3")
+                    if not decimal:
+                        integerList.append(3)
+                    else:
+                        decimalList.append(3)
+                elif event.key == pygame.K_4:
+                    print("4")
+                    if not decimal:
+                        integerList.append(4)
+                    else:
+                        decimalList.append(4)
+                elif event.key == pygame.K_5:
+                    print("5")
+                    if not decimal:
+                        integerList.append(5)
+                    else:
+                        decimalList.append(5)
+                elif event.key == pygame.K_6:
+                    print("6")
+                    if not decimal:
+                        integerList.append(6)
+                    else:
+                        decimalList.append(6)
+                elif event.key == pygame.K_7:
+                    print("7")
+                    if not decimal:
+                        integerList.append(7)
+                    else:
+                        decimalList.append(7)
+                elif event.key == pygame.K_8:
+                    print("8")
+                    if not decimal:
+                        integerList.append(8)
+                    else:
+                        decimalList.append(8)
+                elif event.key == pygame.K_9:
+                    print("9")
+                    if not decimal:
+                        integerList.append(9)
+                    else:
+                        decimalList.append(9)
+                elif event.key == pygame.K_PERIOD:
+                    if decimal == False:
+                        decimal = True
+                        print(".")
+                elif event.key == pygame.K_BACKSPACE:
+                    if len(decimalList) > 0:
+                        decimalList.pop()
+                        print("BACKSPACE")
+                    elif len(decimalList) == 0 and decimal:
+                        decimal = False
+                        print("BACKSPACE")
+                    elif len(integerList) > 0 and not decimal:
+                        integerList.pop()
+                        print("BACKSPACE")
+                elif event.key == pygame.K_ESCAPE:
+                    print("ESC")
+                    variables[currentPath]["waitInput"] = False
+                elif event.key == pygame.K_RETURN:
+                    timeout = 0
+                    if decimal and len(decimal) == 0:
+                        decimal = False
+                    print("ENTER")
+                    print(integerList)
+                    if decimal:
+                        print(".")
+                    print(decimalList)
+                    timeout = min(timeout, 15)
+                    if timeout != 0:
+                        paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], timeout))
+                    #variables[currentPath]["waitInput"] = False
     pygame.quit()
     quit()
 
