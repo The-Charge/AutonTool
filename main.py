@@ -391,10 +391,10 @@ def main():
                                     if lastPoint[0]-FRONT > SWITCH.bottom:
                                         pos[0] = SWITCH.right+FRONT
                             else:   #DTC for any angle
-                                pass
-                            if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
+                                variables[currentPath]["driveToCurrent"] = False
+                            if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION and variables[currentPath]["driveToCurrent"]:
                                 paths[currentPath].append((pos[0], pos[1], DRIVE_TO_CURRENT_SWITCH))
-                            else:
+                            elif variables[currentPath]["driveToCurrent"]:
                                 paths[currentPath].append((pos[0], pos[1], DRIVE_TO_CURRENT_SCALE))
                         elif variables[currentPath]["reversed"]:
                             if paths[currentPath][-1][2] != (pos[0], pos[1], REVERSE):
@@ -520,55 +520,25 @@ def main():
                     paths[currentPath].pop(-1)
             if event.type == pygame.KEYDOWN and waitInput:
                 if event.key == pygame.K_0:
-                    if not decimal:
-                        integerList.append(0)  
-                    else:
-                        decimalList.append(0)
+                    addKey(0, decimal, integerList, decimalList)
                 elif event.key == pygame.K_1:
-                    if not decimal:
-                        integerList.append(1)
-                    else:
-                        decimalList.append(1)
+                    addKey(2, decimal, integerList, decimalList)
                 elif event.key == pygame.K_2:
-                    if not decimal:
-                        integerList.append(2)
-                    else:
-                        decimalList.append(2)
+                    addKey(2, decimal, integerList, decimalList)
                 elif event.key == pygame.K_3:
-                    if not decimal:
-                        integerList.append(3)
-                    else:
-                        decimalList.append(3)
+                    addKey(3, decimal, integerList, decimalList)
                 elif event.key == pygame.K_4:
-                    if not decimal:
-                        integerList.append(4)
-                    else:
-                        decimalList.append(4)
+                    addKey(4, decimal, integerList, decimalList)
                 elif event.key == pygame.K_5:
-                    if not decimal:
-                        integerList.append(5)
-                    else:
-                        decimalList.append(5)
+                    addKey(5, decimal, integerList, decimalList)
                 elif event.key == pygame.K_6:
-                    if not decimal:
-                        integerList.append(6)
-                    else:
-                        decimalList.append(6)
+                    addKey(6, decimal, integerList, decimalList)
                 elif event.key == pygame.K_7:
-                    if not decimal:
-                        integerList.append(7)
-                    else:
-                        decimalList.append(7)
+                    addKey(7, decimal, integerList, decimalList)
                 elif event.key == pygame.K_8:
-                    if not decimal:
-                        integerList.append(8)
-                    else:
-                        decimalList.append(8)
+                    addKey(8, decimal, integerList, decimalList)
                 elif event.key == pygame.K_9:
-                    if not decimal:
-                        integerList.append(9)
-                    else:
-                        decimalList.append(9)
+                    addKey(9, decimal, integerList, decimalList)
                 elif event.key == pygame.K_PERIOD:
                     if decimal == False:
                         decimal = True
@@ -598,6 +568,13 @@ def main():
 #Returns the distance between two pygame positions
 def calcDist(p1, p2):
     return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+#Appends a digit to either a whole number or decimal list
+def addKey(digit, decimal, integerList, decimalList):
+    if not decimal:
+        integerList.append(digit)
+    else:
+        decimalList.append(digit)
 
 #Returns absolute angle from -180 to 180 between two pygame positions, with zero being straight forward, and 999 if there is no position change
 def calcAngle(p1, p2):
