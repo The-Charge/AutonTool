@@ -112,7 +112,7 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
     pygame.draw.rect(screen, GREEN, BTN_WAIT, 0)
     pygame.draw.rect(screen, YELLOW, BTN_DROP, 0)
     pygame.draw.rect(screen, GREEN, BTN_REVERSE, 0)
-    pygame.draw.line(screen, BLACK, BTN_RR.topright, BTN_RR.bottomright, 2)
+    pygame.draw.line(screen, GREEN, BTN_RR.topright, BTN_RR.bottomright, 2)
     
     if currentPath == "LL":
         pygame.draw.rect(screen, BLACK, BTN_LL, 2)
@@ -296,6 +296,7 @@ def main():
     timeList = []
     cloning = False
     waitInput = False
+    moved = False
     finished = False
     
     while not finished:
@@ -315,7 +316,6 @@ def main():
                 finished = True
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 if event.pos[1] < CONTROL_BORDER and not waitInput:
-                    moved = False
                     for x in paths[currentPath]:
                         if x[2] == FORWARD:
                             moved = True
@@ -443,6 +443,7 @@ def main():
                     elif indexClicked == 4 and not waitInput:
                         cloning = not cloning
                     elif indexClicked == 5 and not waitInput:
+                        cloning = False
                         if currentPath != "LL":
                             paths["LL"] = clone(paths[currentPath])
                             variables["LL"] = dict(variables[currentPath])
@@ -464,39 +465,39 @@ def main():
                         outputPath(paths["RL"])
                         print("\n-----RR-----")
                         outputPath(paths["RR"])
-                    elif indexClicked == 7 and not waitInput:
+                    elif indexClicked == 7 and not waitInput and not cloning:
                         for x in paths[currentPath]:
                             if x[2] == FORWARD:
                                 moved = True
                         if moved and variables[currentPath]["elevatorPosition"] != 0:
                             variables[currentPath]["driveToCurrent"] = not variables[currentPath]["driveToCurrent"]
                             variables[currentPath]["reversed"] = False
-                    elif indexClicked == 8 and not waitInput:
+                    elif indexClicked == 8 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                                 print(paths[currentPath][-1])
-                    elif indexClicked == 9 and not waitInput:
+                    elif indexClicked == 9 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                                 print(paths[currentPath][-1])
-                    elif indexClicked == 10:
+                    elif indexClicked == 10 and not cloning:
                         if len(paths[currentPath]) > 0:
                             waitInput = not waitInput
                             decimal = False
                             integerList = []
                             decimalList = []
                             timeList = []
-                    elif indexClicked == 11 and not waitInput:
+                    elif indexClicked == 11 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 1:
                             if variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
                                 variables[currentPath]["clawOpen"] = True
                                 print(paths[currentPath][-1])
-                    elif indexClicked == 12:
+                    elif indexClicked == 12 and not cloning:
                         if len(paths[currentPath]) > 1:
                             variables[currentPath]["reversed"] = not variables[currentPath]["reversed"]
                             variables[currentPath]["driveToCurrent"] = False
@@ -520,68 +521,57 @@ def main():
             if event.type == pygame.KEYDOWN and waitInput:
                 if event.key == pygame.K_0:
                     if not decimal:
-                        integerList.append(0)
+                        integerList.append(0)  
                     else:
                         decimalList.append(0)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_1:
                     if not decimal:
                         integerList.append(1)
                     else:
                         decimalList.append(1)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_2:
                     if not decimal:
                         integerList.append(2)
                     else:
                         decimalList.append(2)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_3:
                     if not decimal:
                         integerList.append(3)
                     else:
                         decimalList.append(3)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_4:
                     if not decimal:
                         integerList.append(4)
                     else:
                         decimalList.append(4)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_5:
                     if not decimal:
                         integerList.append(5)
                     else:
                         decimalList.append(5)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_6:
                     if not decimal:
                         integerList.append(6)
                     else:
                         decimalList.append(6)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_7:
                     if not decimal:
                         integerList.append(7)
                     else:
                         decimalList.append(7)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_8:
                     if not decimal:
                         integerList.append(8)
                     else:
                         decimalList.append(8)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_9:
                     if not decimal:
                         integerList.append(9)
                     else:
                         decimalList.append(9)
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_PERIOD:
                     if decimal == False:
                         decimal = True
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_BACKSPACE:
                     if len(decimalList) > 0:
                         decimalList.pop()
@@ -589,7 +579,6 @@ def main():
                         decimal = False
                     elif len(integerList) > 0 and not decimal:
                         integerList.pop()
-                    timeList = mergeDigits(integerList, decimalList, decimal)
                 elif event.key == pygame.K_ESCAPE:
                     waitInput = False
                 elif event.key == pygame.K_RETURN:
@@ -598,9 +587,11 @@ def main():
                         timeout += integerList[len(integerList)-(pow+1)] * (10 ** pow)
                     for pow in range(-1, -1*len(decimalList)-1, -1):
                         timeout += decimalList[-pow-1] * (10 ** pow)
+                    timeout = min(timeout, 15)
                     if timeout != 0:
                         paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], -1*timeout))
                     waitInput = False
+                timeList = mergeDigits(integerList, decimalList, decimal)
     pygame.quit()
     quit()
 
