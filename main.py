@@ -43,6 +43,7 @@ SCALE_RIGHT = pygame.Rect((275, 59, 42, 56))
 
 # Conversion factors
 PIXELS_PER_FOOT = 13.75
+SECONDS_PER_TICK = .019
 
 # Colors
 WHITE = (255, 255, 255)
@@ -51,9 +52,6 @@ GREEN = (46, 130, 23)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
-
-#Other constants
-TICK = .08
 
 # Button positions
 BTN_LL = pygame.Rect((0, 479, 50, 40))
@@ -154,7 +152,8 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
     for button in buttonSizes:
         if timers[str(button)] > 0:
             pygame.draw.rect(screen, BLACK, button, 2)
-            timers[str(button)] -= TICK
+            timers[str(button)] -= SECONDS_PER_TICK
+            print(str(timers[str(button)]))
         if timers[str(button)] < 0:
             timers[str(button)] = 0
     
@@ -459,7 +458,7 @@ def main():
                         cloning = not cloning
                     elif indexClicked == 5 and not waitInput:
                         cloning = False
-                        timers[str(BTN_ALL)] = .5
+                        timers[str(BTN_ALL)] = .1
                         if currentPath != "LL":
                             paths["LL"] = clone(paths[currentPath])
                             variables["LL"] = dict(variables[currentPath])
@@ -473,7 +472,7 @@ def main():
                             paths["RR"] = clone(paths[currentPath])
                             variables["RR"] = dict(variables[currentPath])
                     elif indexClicked == 6 and not waitInput:
-                        timers[str(BTN_EXPORT)] = .5
+                        timers[str(BTN_EXPORT)] = .1
                         print("\n----------------------------------------\n-----LL-----")
                         outputPath(paths["LL"])
                         print("\n-----LR-----")
@@ -492,14 +491,14 @@ def main():
                     elif indexClicked == 8 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
-                                timers[str(BTN_SWITCH)] = .5
+                                timers[str(BTN_SWITCH)] = .1
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                                 print(paths[currentPath][-1])
                     elif indexClicked == 9 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
-                                timers[str(BTN_SCALE)] = .5
+                                timers[str(BTN_SCALE)] = .1
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                                 print(paths[currentPath][-1])
@@ -513,7 +512,7 @@ def main():
                     elif indexClicked == 11 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 1:
                             if variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
-                                timers[str(BTN_DROP)] = .5
+                                timers[str(BTN_DROP)] = .1
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
                                 variables[currentPath]["clawOpen"] = True
                                 print(paths[currentPath][-1])
