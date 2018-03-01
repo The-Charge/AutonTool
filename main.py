@@ -52,6 +52,9 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 
+#Other constants
+TICK = .08
+
 # Button positions
 BTN_LL = pygame.Rect((0, 479, 50, 40))
 BTN_LR = pygame.Rect((50, 479, 50, 40))
@@ -76,7 +79,7 @@ FRONT = int(ROBOT_DIMS_FEET[1] * PIXELS_PER_FOOT / 2)
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
 
 #Draws buttons
-def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList):
+def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes):
     font = pygame.font.SysFont('arial', 22, True)
     numDisplay = ""
     if waitInput:
@@ -135,20 +138,25 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
         pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
     if waitInput:
         pygame.draw.rect(screen, BLACK, BTN_WAIT, 2)
-    if paths["LL"] == paths["LR"] and paths["LL"] == paths["RL"] and paths["LL"] == paths["RR"] and paths["LL"] != []:
-        pygame.draw.rect(screen, BLACK, BTN_ALL, 2)
+#    if paths["LL"] == paths["LR"] and paths["LL"] == paths["RL"] and paths["LL"] == paths["RR"] and paths["LL"] != []:
+#       pygame.draw.rect(screen, BLACK, BTN_ALL, 2)
+#    if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
+#        pygame.draw.rect(screen, BLACK, BTN_SWITCH, 2)
+#    if variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
+#        pygame.draw.rect(screen, BLACK, BTN_SCALE, 2)
     if variables[currentPath]["driveToCurrent"]:
         pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
-    if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
-        pygame.draw.rect(screen, BLACK, BTN_SWITCH, 2)
-    if variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
-        pygame.draw.rect(screen, BLACK, BTN_SCALE, 2)
-    if variables[currentPath]["driveToCurrent"]:
-        pygame.draw.rect(screen, BLACK, BTN_DTC, 2)
-    if variables[currentPath]["clawOpen"]:
-        pygame.draw.rect(screen, BLACK, BTN_DROP, 2)
+#    if variables[currentPath]["clawOpen"]:
+#        pygame.draw.rect(screen, BLACK, BTN_DROP, 2)
     if variables[currentPath]["reversed"]:
         pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
+    
+    for button in buttonSizes:
+        if timers[str(button)] > 0:
+            pygame.draw.rect(screen, BLACK, button, 2)
+            timers[str(button)] -= TICK
+        if timers[str(button)] < 0:
+            timers[str(button)] = 0
     
     screen.blit(text0, BTN_LL.topleft)
     screen.blit(text1, BTN_LR.topleft)
@@ -208,7 +216,7 @@ def outputPath(path):
         if len(path) > 0:
             if path[x][2] < 0:
                 time = -1 * round(path[x][2], 2)
-                print("addTimeOut(%s);" % time)
+                print("addSequential(new TimeOut(%s);" % time)
             if path[x][2] == DRIVE_TO_CURRENT_SWITCH:
                 print("addSequential(new DriveToCurrent(.2, 5));")
             if path[x][2] == DRIVE_TO_CURRENT_SCALE:
@@ -287,6 +295,10 @@ def main():
                  "LR":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}, \
                  "RL":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}, \
                  "RR":{"reversed":False, "driveToCurrent":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0}}
+    timers = {}
+    for button in buttonSizes:
+        timers[str(button)] = 0
+        
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
     pygame.display.set_caption("AutonTool: LL")
@@ -301,7 +313,7 @@ def main():
     
     while not finished:
         screen.blit(background, backgroundRect)
-        drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList)
+        drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes)
         drawPath(screen, paths[currentPath])
         pygame.display.flip()
         
@@ -315,6 +327,9 @@ def main():
             if event.type == pygame.QUIT:
                 finished = True
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                validClick = True
+                if SCALE.collidepoint(event.pos) or SWITCH.collidepoint(event.pos):
+                    validClick = False
                 if event.pos[1] < CONTROL_BORDER and not waitInput:
                     for x in paths[currentPath]:
                         if x[2] == FORWARD:
@@ -326,7 +341,7 @@ def main():
                     elif not moved:
                         firstMove = checkFirstMove(event.pos, paths[currentPath])
                         paths[currentPath].append((start_x, firstMove, FORWARD))
-                    else:
+                    elif validClick:
                         pos = [event.pos[0], event.pos[1]]
                         lastPoint = (paths[currentPath][-1][0], paths[currentPath][-1][1])
                         angle = calcAngle(paths[currentPath][-1], pos)
@@ -444,6 +459,7 @@ def main():
                         cloning = not cloning
                     elif indexClicked == 5 and not waitInput:
                         cloning = False
+                        timers[str(BTN_ALL)] = .5
                         if currentPath != "LL":
                             paths["LL"] = clone(paths[currentPath])
                             variables["LL"] = dict(variables[currentPath])
@@ -457,6 +473,7 @@ def main():
                             paths["RR"] = clone(paths[currentPath])
                             variables["RR"] = dict(variables[currentPath])
                     elif indexClicked == 6 and not waitInput:
+                        timers[str(BTN_EXPORT)] = .5
                         print("\n----------------------------------------\n-----LL-----")
                         outputPath(paths["LL"])
                         print("\n-----LR-----")
@@ -475,12 +492,14 @@ def main():
                     elif indexClicked == 8 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
+                                timers[str(BTN_SWITCH)] = .5
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                                 print(paths[currentPath][-1])
                     elif indexClicked == 9 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 0:
                             if variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
+                                timers[str(BTN_SCALE)] = .5
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
                                 variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                                 print(paths[currentPath][-1])
@@ -494,6 +513,7 @@ def main():
                     elif indexClicked == 11 and not waitInput and not cloning:
                         if len(paths[currentPath]) > 1:
                             if variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
+                                timers[str(BTN_DROP)] = .5
                                 paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
                                 variables[currentPath]["clawOpen"] = True
                                 print(paths[currentPath][-1])
@@ -518,11 +538,13 @@ def main():
                             variables[currentPath]["reversed"] = False
                     variables[currentPath]["driveToCurrent"] = False
                     paths[currentPath].pop(-1)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                pass
             if event.type == pygame.KEYDOWN and waitInput:
                 if event.key == pygame.K_0:
                     addKey(0, decimal, integerList, decimalList)
                 elif event.key == pygame.K_1:
-                    addKey(2, decimal, integerList, decimalList)
+                    addKey(1, decimal, integerList, decimalList)
                 elif event.key == pygame.K_2:
                     addKey(2, decimal, integerList, decimalList)
                 elif event.key == pygame.K_3:
