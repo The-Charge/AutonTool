@@ -671,9 +671,9 @@ def main():
                     
                     #then loop through the path and update them if their commands are found - because variables[] isn't stored for each position
                     for point in paths[currentPath]:
-                        if point[2] == SCALE_POSITION:
+                        if point[2] == SWITCH_POSITION:
                             variables[currentPath]["elevatorPosition"] = 2
-                        elif point[2] == SWITCH_POSITION:
+                        elif point[2] == SCALE_POSITION:
                             variables[currentPath]["elevatorPosition"] = 5
                         elif point[2] == OPEN_CLAW:
                             variables[currentPath]["clawOpen"] = True
