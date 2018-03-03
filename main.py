@@ -28,6 +28,19 @@ DRIVE_TO_CURRENT_SCALE = 6
 STARTING = 7
 #timeouts will be -(value)
 
+"""
+0 = sequential
+1 = parallel
+
+
+0 = motionmagic (number feet)
+1 = elevatorposition (2 or 5)
+2 = runCollectorReverse(0.05)
+3 = drive to current (.2, 5)[0] or (.07, 1)[1]
+4 = turnNdegrees
+5 = wait
+"""
+
 #Field barriers
 LEFT_WALL = 22
 RIGHT_WALL = 401
@@ -35,6 +48,7 @@ TOP_BOUND = 48
 LOWER_BOUND = 468
 
 #Switch and Scales
+#SWITCH and SCALE are the entire thing, SWITCH_LEFT etc are for drawing the white rectangles
 SWITCH = pygame.Rect((121, 239, 180, 64))
 SWITCH_LEFT = pygame.Rect((126, 241, 43, 57))
 SWITCH_RIGHT = pygame.Rect((253, 241, 43, 57))
@@ -55,6 +69,7 @@ BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 
 # Button positions
+#defining rectangles for every button on the bottom of the screen
 BTN_LL = pygame.Rect((0, 479, 50, 40))
 BTN_LR = pygame.Rect((50, 479, 50, 40))
 BTN_RL = pygame.Rect((100, 479, 50, 40))
@@ -72,7 +87,6 @@ BTN_REVERSE = pygame.Rect((335, 519, 86, 40))
 # Robot dimensions
 ROBOT_DIMS_INCHES = [38.5, 33.5]
 ROBOT_DIMS_FEET = [dim / 12 for dim in ROBOT_DIMS_INCHES]
-ROBOT_PIXELS_HALF = [int(dim * PIXELS_PER_FOOT / 2) for dim in ROBOT_DIMS_FEET]
 SIDE = int(ROBOT_DIMS_FEET[0] * PIXELS_PER_FOOT / 2)
 FRONT = int(ROBOT_DIMS_FEET[1] * PIXELS_PER_FOOT / 2)
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
@@ -164,6 +178,7 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
 
 #Draws the robot at the given angle
 def drawRobot(screen, point, angle, color):
+    #finds 4 points around the robot's center at the correct angle for the corners and draws a polygon around them
     baseAngle = 48.972495940751 + angle
     baseAngle -= 90
     angles = [baseAngle, baseAngle + 82.055008118498, baseAngle + 180, baseAngle + 262.0550081185]
@@ -178,62 +193,109 @@ def drawRobot(screen, point, angle, color):
 
 #Draws the robot's path and positions
 def drawPath(screen, path):
+    #draws a yellow dot at the center of each position
     for point in path:
         pygame.draw.circle(screen, YELLOW, point[:2], 2, 0)
     
+    #go through every point in the path (except the last, because it looks ahead
     for x in range(len(path) - 1):
+        #set two point to draw a path between
         last_point = path[x]
         next_point = path[x + 1]
+        #do nothing if the positional coordinates (first two numbers) are identical to the last (doesn't move)
         if next_point[:2] != last_point[:2]:
+            #find the angle for drawRobot() to use
             angle = calcAngle(last_point[:2], next_point[:2])
+            #flip it if you're moving backwards
             if next_point[2] == REVERSE:
                 if angle < 0:
                     angle += 180
                 else:
                     angle -= 180
+            #draw a blue and red robot at the start and finish of the path
             drawRobot(screen, last_point[:2], angle, BLUE)
             drawRobot(screen, next_point[:2], angle, RED)
+            #connect the points with a line
             pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
+    #since it looks at two positions, it needs different code if there's only one coordinate to look at
     if len(path) > 0:
         drawRobot(screen, path[0][:2], 0, BLUE)
 
-#Takes in a list of coordinates and instructions and prints auton commands
-def outputPath(path):
+#Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
+def outputPath(path, key):
+    if key == "LL":
+        file = open("pygameLL.txt", "w")
+    elif key == "LR":
+        file = open("pygameLR.txt", "w")
+    elif key == "RL":
+        file = open("pygameRL.txt", "w")
+    elif key == "RR":
+        file = open("pygameRR.txt", "w")
+    #delete the current contents
+    f.seek(0)
+    f.truncate()
+    #the robot's angle will always start at 0deg
     previousAngle = 0
+    #All auton is done in low gear
     print("addSequential(new ShiftLow());")
+    #Take each coordinate in the path
     for x in range(len(path)):
+        #certain actions won't be read in unless there is >= 1 coordinate in the path (the robot has been placed down)
         if len(path) > 0:
+            #path[x][2] is the third coordinate - it gives additional instructions (see constants above)
+            #wait timers are just negative numbers
             if path[x][2] < 0:
+                #turn it back into a positive number and round it
                 time = -1 * round(path[x][2], 2)
                 print("addSequential(new TimeOut(%s);" % time)
-            if path[x][2] == DRIVE_TO_CURRENT_SWITCH:
+                f.write("0 5 %s" % time)
+            #main() will tell outputPath() which DTC to use
+            elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:
                 print("addSequential(new DriveToCurrent(.2, 5));")
-            if path[x][2] == DRIVE_TO_CURRENT_SCALE:
+                f.write("0 3 0")
+            elif path[x][2] == DRIVE_TO_CURRENT_SCALE:
                 print("addSequential(new DriveToCurrent(.07, 1);")
+                f.write("0 3 1")
             elif path[x][2] == OPEN_CLAW:
                 print("addSequential(new RunCollectorReverse(0.05));")
+                f.write("0 2 0.05")
+        #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
         if x != len(path)-1:
+            #defines two consecutive points in the list
             p1 = path[x]
             p2 = path[x + 1]
+            #find the angle from point a to b
             angle = calcAngle(p1[:2], p2[:2])
+            #flip the angle if reverse drive is enabled
             if p2[2] == REVERSE:
                 if angle < 0:
                     angle += 180
                 else:
                     angle -= 180
-            if angle != 999 and angle != previousAngle and x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH:
-                print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
+            #don't turn if you activate something that doesn't require turning
             if angle != 999:
+                if x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH and calcAngleDifference(angle, previousAngle) > 2:
+                    print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
+                    f.write("0 4 %s" % round(angle, 2))
+                #store the angle for future reference
                 previousAngle = angle
+            #calculate the distance moved in feet
             distance = calcDist(p2[:2], p1[:2]) / PIXELS_PER_FOOT
+            #negative distance if going backwards
             if p2[2] == REVERSE:
                 distance = -1 * distance
+            #commands to move the elevator
             if path[x][2] == SWITCH_POSITION:
                 print("addParallel(new ElevateToXPos(2));")
+                f.write("1 1 2")
             elif path[x][2] == SCALE_POSITION:
                 print("addParallel(new ElevateToXPos(5));")
+                f.wriet("1 1 5")
+            #motion magic
             if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
                 print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
+                f.write("0 0 %s" % round(distance, 2))
+    f.close()
 
 #Checks boundaries of starting position
 def checkStart(xpos):
@@ -249,6 +311,7 @@ def checkStart(xpos):
 
 #Checks boundaries of first move
 def checkFirstMove(point, path):
+    #prevents the first move (forward) from going past the switch/scale
     if path[-1][0]+SIDE > SCALE.left and path[-1][0]-SIDE < SCALE.right:
         if path[-1][0]+SIDE > SWITCH.left and path[-1][0]-SIDE < SWITCH.right:
             if point[1]-FRONT < SWITCH.bottom:
@@ -277,66 +340,130 @@ def clone(path):
     return newPath
     
 def main():
+    #start on the "LL" tab
     currentPath = "LL"
+    #a list of every button
     buttonSizes = [BTN_LL, BTN_LR, BTN_RL, BTN_RR, BTN_CLONE, BTN_ALL, BTN_EXPORT, BTN_DTC, BTN_SWITCH, BTN_SCALE, BTN_WAIT, BTN_DROP, BTN_REVERSE]
+    """
+    Each of the dictionaries {} that have "LL": etc will contain separate information for each tab (LL, LR, RL, RR).
+    Changing the tab by clicking on the respective button will change 'currentPath', which is used to call the information in the dictionary.
+    Each auton setting needs a separate set of instructions and variables
+    
+    paths holds coordinates: ((x, y, other instruction))
+    The 'other instructions' are defined as constants above ('SWITCH_POSITION', etc) and are used in outputPath()
+    
+    angle stores the angle at any given positions
+    variables are for various states of the robot
+    """
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
     angles = {"LL":[], "LR":[], "RL":[], "RR":[]}
-    variables = {"LL":{"reversed":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0, "moved":False}, \
-                 "LR":{"reversed":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0, "moved":False}, \
-                 "RL":{"reversed":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0, "moved":False}, \
-                 "RR":{"reversed":False, "clawOpen":False, "waitInput":False, "elevatorPosition":0, "moved":False}}
+    variables = {"LL":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
+                 "LR":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
+                 "RL":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
+                 "RR":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}}
+    
+    #this is used to keep track of a number for each button. When it's pressed, it adds a number of seconds to it.
+    #In drawControls(), the number decrements and a rectangle is drawn around each box until it reaches 0
+    #this highlights the button for a certain amount of time when clicked
     timers = {}
     for button in buttonSizes:
         timers[str(button)] = 0
     
+    #initialize pygame, self explanatory
     pygame.init()
+    
+    #the screen is the object that pygame functions draw to
     screen = pygame.display.set_mode((SCREEN_X, SCREEN_Y))
+    
+    #words in top left
     pygame.display.set_caption("AutonTool: LL")
+    
+    #another refresh, I guess
     pygame.display.update()
+    
+    #set background image
     background = pygame.image.load("Field.png")
+    
+    #creates a rectangle object based on the background image
     backgroundRect = background.get_rect()
+    
+    #a list of characters that is passed to drawControls and printed as a number (when taking keyboard input)
     timeList = []
+    
+    #cloning is toggled by the CLONE button and is referenced in the LL LR etc buttons (when cloning is true, it will make copy the
+    #current path into the one you click
     cloning = False
+    
+    #waitInput is true when you click WAIT and need to take keyboard input - locks most functions until you finish
     waitInput = False
+    
+    #loop the program
     finished = False
     
     while not finished:
+        #place the field on the background
         screen.blit(background, backgroundRect)
+        
+        #this is in a separate function to tidy up main()
+        #it draws all the buttons and other designs
         drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes)
+        #draws the robots and lines
         drawPath(screen, paths[currentPath])
+        #refresh the screen
         pygame.display.flip()
         
-        if len(paths[currentPath]) < 2:
-            variables[currentPath]["reversed"] = False
-            waitInput = False
+        #check if the robot has already been moved forwards
         variables[currentPath]["moved"] = False
         for x in paths[currentPath]:
             if x[2] == FORWARD:
                 variables[currentPath]["moved"] = True
+        #prevent you from going backwards until you've already gone forwards
+        if not variables[currentPath]["moved"]:
+            variables[currentPath]["reversed"] = False
+        #prevents adding a timeout if the robot's initial position isn't defined
+        if len(paths[currentPath]) < 1:
+            waitInput = False
         
+        #loop through the queued events, which are mouse clicks and key inputs
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 finished = True
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                validClick = True
-                if SCALE.collidepoint(event.pos) or SWITCH.collidepoint(event.pos):
-                    validClick = False
+                #if you click on the field and you aren't taking keyboard input
                 if event.pos[1] < CONTROL_BORDER and not waitInput:
+                    #event.pos is a tuple of the mouse's coordinates: (xpos, ypos). use event.pos[0] or [1] to get the components
+                    #different code depending on which move you're making (initial position, first move forward, everthing else after)
+                    
+                    #initial position                    
                     if len(paths[currentPath]) == 0:
+                        #take the xpos of the click and correct it if it's not in legal range
                         start_x = event.pos[0]
                         start_x = checkStart(start_x)
+                        #the y position is always constant for the first move
                         paths[currentPath].append((start_x, STARTING_Y, STARTING))
+                        #first angle is always 0
                         angles[currentPath].append(0)
+                        
+                    #"moved" is the variable that tells if the robot has already made its first move (forward)
                     elif not variables[currentPath]["moved"]:
+                        #use the first move correction code to prevent it from going past the switch or scale
                         firstMove = checkFirstMove(event.pos, paths[currentPath])
-                        paths[currentPath].append((start_x, firstMove, FORWARD))
+                        #add a coordinate with the corrected y coordinate and the original x coordinate
+                        paths[currentPath].append((paths[currentPath][0][0], firstMove, FORWARD))
                         angles[currentPath].append(0)
-                    #elif validClick:
+                        
+                    #if the robot has already been placed down and moved forward
                     else:
+                        #create a mutable list that contains the mouse coordinates
                         pos = [event.pos[0], event.pos[1]]
+                        #find the previous point's coordinates
                         lastPoint = (paths[currentPath][-1][0], paths[currentPath][-1][1])
+                        #find the angle from the last point to the current point
                         angle = calcAngle(paths[currentPath][-1], pos)
                         
+                        #if the robot's directions is within 5degrees, allign it to the grid(the x/y pos of the last position)
+                        #90% of movements are done at 90deg angles
+                        #don't bother with this part if there is no position change (angle == 999)
                         if angle != 999:
                             if angle < 5 and angle > -5:
                                 pos[0] = lastPoint[0]
@@ -351,34 +478,42 @@ def main():
                                 pos[1] = lastPoint[1]
                                 angle = -90
                         
-                        pos = correctPosition(lastPoint, pos, variables[currentPath]["reversed"])
+                        #takes the mouseclick, last position, and whether or not it's driving backwards and stops the robot before colliding
+                        pos = correctPosition(lastPoint, pos)
                         
-                        
-                        if variables[currentPath]["reversed"]:
-                            if paths[currentPath][-1][2] != (pos[0], pos[1], REVERSE):
-                                paths[currentPath].append((pos[0], pos[1], REVERSE))
-                        else:
-                            if paths[currentPath][-1][2] != (pos[0], pos[1], FORWARD):
-                                paths[currentPath].append((pos[0], pos[1], FORWARD))
+                        #if reverse drive is enabled, give it the REVERSE instruction, which is used in outputPath()
+                        if variables[currentPath]["reversed"] and paths[currentPath][-1][2] != (pos[0], pos[1], REVERSE):
+                            paths[currentPath].append((pos[0], pos[1], REVERSE))
+                        #otherwise give it the basic FORWARD instruction
+                        elif paths[currentPath][-1][2] != (pos[0], pos[1], FORWARD):
+                            paths[currentPath].append((pos[0], pos[1], FORWARD))
+                        #add the angle to the list of angles
                         if angle != 999:
                             angles[currentPath].append(angle)
+                        #if there is no position change, copy the angle from the last position
                         else:
                             angles[currentPath].append(angles[currentPath][-1])
-                    #print(angles)
                     print(paths[currentPath][-1])
+                #if the click is in the button area
                 if event.pos[1] >= CONTROL_BORDER:
+                    #loop through a list of Rect objects (the buttons) and find the one that was clicked
                     for x in range(len(buttonSizes)):
                         if buttonSizes[x].collidepoint(event.pos):
+                            #save the index of the button clicked
                             indexClicked = x
+                    #BTN_LL
                     if indexClicked == 0 and not waitInput:
                         if not cloning:
+                            #switch currentPath to the LL key
                             currentPath = "LL"
                         else:
+                            #copy the information from the current path onto LL
                             paths["LL"] = clone(paths[currentPath])
                             variables["LL"] = dict(variables[currentPath])
                             angles["LL"] = clone(angles[currentPath])
                             cloning = False
                             currentPath = "LL"
+                    #BTN_LR
                     elif indexClicked == 1 and not waitInput:
                         if not cloning:
                             currentPath = "LR"
@@ -388,6 +523,7 @@ def main():
                             angles["LR"] = clone(angles[currentPath])
                             cloning = False
                             currentPath = "LR"
+                    #BTN_RL
                     elif indexClicked == 2 and not waitInput:
                         if not cloning:
                             currentPath = "RL"
@@ -397,6 +533,7 @@ def main():
                             angles["RL"] = clone(angles[currentPath])
                             cloning = False
                             currentPath = "RL"
+                    #BTN_RR
                     elif indexClicked == 3 and not waitInput:
                         if not cloning:
                             currentPath = "RR"
@@ -406,11 +543,15 @@ def main():
                             angles["RR"] = clone(angles[currentPath])
                             cloning = False
                             currentPath = "RR"
+                    #BTN_CLONE - toggles
                     elif indexClicked == 4 and not waitInput:
                         cloning = not cloning
+                    #BTN_ALL
                     elif indexClicked == 5 and not waitInput:
                         cloning = False
+                        #sets a timer to highlight the button for a short time
                         timers[str(BTN_ALL)] = .1
+                        #clone the current path's information onto all other paths
                         if currentPath != "LL":
                             paths["LL"] = clone(paths[currentPath])
                             variables["LL"] = dict(variables[currentPath])
@@ -427,51 +568,68 @@ def main():
                             paths["RR"] = clone(paths[currentPath])
                             variables["RR"] = dict(variables[currentPath])
                             angles["RR"] = clone(angles[currentPath])
+                    #BTN_EXPORT
                     elif indexClicked == 6 and not waitInput:
                         timers[str(BTN_EXPORT)] = .1
+                        #write instructions to a file
+                        """
+                        needs changing
+                        """
                         print("\n----------------------------------------\n-----LL-----")
-                        outputPath(paths["LL"])
+                        outputPath(paths["LL"], "LL")
                         print("\n-----LR-----")
-                        outputPath(paths["LR"])
+                        outputPath(paths["LR"], "LR")
                         print("\n-----RL-----")
-                        outputPath(paths["RL"])
+                        outputPath(paths["RL"], "RL")
                         print("\n-----RR-----")
-                        outputPath(paths["RR"])
+                        outputPath(paths["RR"], "RR")
+                    #BTN_DTC
                     elif indexClicked == 7 and not waitInput and not cloning:
+                        #take the angle the robot is at and find a position very far away in that directions
+                        #correctPosition() will stop it right when it hits an obstacle
+                        #only do DTC if the robot has moved and the elevator has been raised
                         if variables[currentPath]["moved"] and variables[currentPath]["elevatorPosition"] != 0:
                             timers[str(BTN_DTC)] = .1
                             lastPoint = paths[currentPath][-1]
+                            #find current angle in radians
                             angle = math.radians(angles[currentPath][-1]-90)
                             xComp = math.cos(angle)
                             yComp = math.sin(angle)
                             newPoint = (int(lastPoint[0] + xComp*1000), int(lastPoint[1] + yComp*1000))
-                            newPoint = correctPosition(lastPoint, newPoint, False)
+                            newPoint = correctPosition(lastPoint, newPoint)
+                            #the positioning is only for the pygame to use. The robot will only see the DTC command
+                            #use the write DTC parameters for the current elevator position
                             if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
                                 paths[currentPath].append((newPoint[0], newPoint[1], DRIVE_TO_CURRENT_SWITCH))
                             else:
                                 paths[currentPath].append((newPoint[0], newPoint[1], DRIVE_TO_CURRENT_SCALE))
                             angles[currentPath].append(angles[currentPath][-1])
+                    #
+                    #BTN_SWITCH
                     elif indexClicked == 8 and not waitInput and not cloning:
                     #SWITCH button pressed, can't be clicked when taking keyboard input or cloning a path
-                        if len(paths[currentPath]) > 0:
-                            if variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
-                                timers[str(BTN_SWITCH)] = .1
-                                paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
-                                variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
-                                angles[currentPath].append(angles[currentPath][-1])
-                                print(paths[currentPath][-1])
+                        #don't add the elevate command if it's already raised to that position
+                        if len(paths[currentPath]) > 0 and variables[currentPath]["elevatorPosition"] != SWITCH_POSITION:
+                            timers[str(BTN_SWITCH)] = .1
+                            paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SWITCH_POSITION))
+                            #store the elevator position for future reference
+                            variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
+                            angles[currentPath].append(angles[currentPath][-1])
+                            print(paths[currentPath][-1])
+                    #BTN_SCALE
                     elif indexClicked == 9 and not waitInput and not cloning:
                     #SCALE button pressed, can't be clicked when taking keyboard input or cloning a path
-                        if len(paths[currentPath]) > 0:
-                        #can't be clicked if initial position is not defined in paths[currentPath]
-                            if variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
-                                timers[str(BTN_SCALE)] = .1
-                                paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
-                                variables[currentPath]["elevatorPosition"] = SCALE_POSITION
-                                angles[currentPath].append(angles[currentPath][-1])
-                                print(paths[currentPath][-1])
+                        #don't add the elevate command if it's already raised to that position
+                        if len(paths[currentPath]) > 0 and variables[currentPath]["elevatorPosition"] != SCALE_POSITION:
+                            timers[str(BTN_SCALE)] = .1
+                            paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], SCALE_POSITION))
+                            #store the elevator position for future reference
+                            variables[currentPath]["elevatorPosition"] = SCALE_POSITION
+                            angles[currentPath].append(angles[currentPath][-1])
+                            print(paths[currentPath][-1])
+                    #BTN_WAIT
                     elif indexClicked == 10 and not cloning:
-                    #WAIT button enables key input (see below) for a timeout and can't be clicked when cloning a papth
+                    #enables key input (see below) to pause the robot, can't be clicked when cloning a path
                         if len(paths[currentPath]) > 0:
                             waitInput = not waitInput   #toggles the mode
                             #these variables are used later
@@ -479,39 +637,53 @@ def main():
                             integerList = []
                             decimalList = []
                             timeList = []
+                    #BTN_DROP
                     elif indexClicked == 11 and not waitInput and not cloning:
-                        if len(paths[currentPath]) > 1:
-                            if variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
-                                timers[str(BTN_DROP)] = .1
-                                paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
-                                variables[currentPath]["clawOpen"] = True
-                                angles[currentPath].append(angles[currentPath][-1])
-                                print(paths[currentPath][-1])
+                        #only drop the cube if the elevator is raised
+                        if len(paths[currentPath]) > 1 and variables[currentPath]["elevatorPosition"] != 0 and not variables[currentPath]["clawOpen"]:
+                            timers[str(BTN_DROP)] = .1
+                            paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], OPEN_CLAW))
+                            #store claw state for future reference
+                            variables[currentPath]["clawOpen"] = True
+                            angles[currentPath].append(angles[currentPath][-1])
+                            print(paths[currentPath][-1])
+                    #BTN_REVERSE
                     elif indexClicked == 12 and not cloning:
+                        #toggle reverse drive on or off
                         if len(paths[currentPath]) > 1:
                             variables[currentPath]["reversed"] = not variables[currentPath]["reversed"]
+                    #update the window text
                     pygame.display.set_caption("AutonTool: " + currentPath)
+            #right click
+            #remove the last coordinate/instruction given
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
+                #do nothing if there's nothing in paths[currentPath] - nothing to delete
                 if len(paths[currentPath]) > 0:
-                    if paths[currentPath][-1][2] == SWITCH_POSITION or paths[currentPath][-1][2] == SCALE_POSITION:
-                        if paths[currentPath][-2][2] == SWITCH_POSITION:
-                            variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
-                        elif paths[currentPath][-2][2] == SCALE_POSITION:
-                            variables[currentPath]["elevatorPosition"] = SCALE_POSITION
-                        else:
-                            variables[currentPath]["elevatorPosition"] = 0
-                    if paths[currentPath][-1][2] == OPEN_CLAW:
-                        variables[currentPath]["clawOpen"] = False
-                    if paths[currentPath][-1][2] == REVERSE:
-                        if paths[currentPath][-1][2] != REVERSE:
-                            variables[currentPath]["reversed"] = False
-                    paths[currentPath].pop(-1)
-                    angles[currentPath].pop(-1)
+                    #remove the last item in paths[currentPath] and angles[currentPath]
+                    paths[currentPath].pop()
+                    angles[currentPath].pop()
+                    
+                    #first, set these variables false
+                    waitInput = False
+                    variables[currentPath]["reversed"] = False
+                    variables[currentPath]["clawOpen"] = False
+                    variables[currentPath]["elevatorPosition"] = 0
+                    
+                    #then loop through the path and update them if their commands are found - because variables[] isn't stored for each position
+                    for point in paths[currentPath]:
+                        if point[2] == SCALE_POSITION:
+                            variables[currentPath]["elevatorPosition"] = 2
+                        elif point[2] == SWITCH_POSITION:
+                            variables[currentPath]["elevatorPosition"] = 5
+                        elif point[2] == OPEN_CLAW:
+                            variables[currentPath]["clawOpen"] = True
                 if len(paths[currentPath]) < 2:
                     variables[currentPath]["moved"] = False
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                pass
+            #if WAIT is toggled and a key press is detected
             if event.type == pygame.KEYDOWN and waitInput:
+                #takes the correct digit and adds it to the correct list
+                #stores a separate list of digits for integers and decimals, then puts them together at the end
+                #decimal is a boolean of whether or not the '.' key has been pressed
                 if event.key == pygame.K_0:
                     addKey(0, decimal, integerList, decimalList)
                 elif event.key == pygame.K_1:
@@ -532,9 +704,11 @@ def main():
                     addKey(8, decimal, integerList, decimalList)
                 elif event.key == pygame.K_9:
                     addKey(9, decimal, integerList, decimalList)
+                #set the decimal bool true, a decimal will show up in the string output
+                #and any subsequent keys will be added to the decimal list
                 elif event.key == pygame.K_PERIOD:
-                    if decimal == False:
-                        decimal = True
+                    decimal = True
+                #undo the keypress
                 elif event.key == pygame.K_BACKSPACE:
                     if len(decimalList) > 0:
                         decimalList.pop()
@@ -542,36 +716,47 @@ def main():
                         decimal = False
                     elif len(integerList) > 0 and not decimal:
                         integerList.pop()
+                #toggle WAIT off - also you can click BTN_WAIT
                 elif event.key == pygame.K_ESCAPE:
                     waitInput = False
+                #add the typed number as a paramater in paths[currentPath]
                 elif event.key == pygame.K_RETURN:
                     timeout = 0
+                    #math for getting number from list of digits
                     for pow in range(len(integerList)-1, -1, -1):
                         timeout += integerList[len(integerList)-(pow+1)] * (10 ** pow)
                     for pow in range(-1, -1*len(decimalList)-1, -1):
                         timeout += decimalList[-pow-1] * (10 ** pow)
+                    #cap the wait period at 15 seconds
                     timeout = min(timeout, 15)
                     if timeout != 0:
+                        #timeout values are negative to differentiate them from things like FORWARD=0, OPEN_CLAW=4, etc
                         paths[currentPath].append((paths[currentPath][-1][0], paths[currentPath][-1][1], -1*timeout))
                         angles[currentPath].append(angles[currentPath][-1])
                     waitInput = False
+                #after evey key, update the string output list that is put on the screen
                 timeList = mergeDigits(integerList, decimalList, decimal)
     pygame.quit()
     quit()
 
-#takes in two points and shortens the path if there is an obstacle between them
-def correctPosition(pos1, pos2, reversed):
-    print(reversed)
+#Takes in two points and shortens the path between if there is an obstacle between them
+def correctPosition(pos1, pos2):
+    #trim the coordinate to only the first two, in case something from paths[] is passed
     pos1 = pos1[:2]
     pos2 = pos2[:2]
+    #find the distance of the path that needs to be checked for collisions
     dist = calcDist(pos1, pos2)
+    #find direction it will check in
     angle = calcAngle(pos1, pos2)
+    #don't change anything if there's no position change
     if angle == 999:
-        return
+        return [pos1, pos2]
     
+    #convert to radians and find components
     xComp = math.cos(math.radians(angle-90))
     yComp = math.sin(math.radians(angle-90))
     
+    #code copied from drawRobot() used to find 4 corners of robot at given direction
     baseAngle = 48.972495940751 + angle
     baseAngle -= 90
     angles = [baseAngle, baseAngle + 82.055008118498, baseAngle + 180, baseAngle + 262.0550081185]
@@ -581,18 +766,29 @@ def correctPosition(pos1, pos2, reversed):
     points = []
     for i in range(len(x_points)):
         points.append([x_points[i], y_points[i]])
+    #points is a list of 4 coordinates
+    #take 2 coordinates from points to make a line
     line = [points[0], points[3]]
     
+    #
     distTraveled = 0
     xTraveled = 0
     yTraveled = 0
         
+    """
+    The loop will slowly move a line (front of robot) forward in the path the robot moves in.
+    When it reaches the end of the line (distTraveled >= dist) or it hits something on the field, it will
+    stop the line where it is and add distanceTraveled to the robot's coordinate
+    """
     scanning = True
     while scanning:
         templine = []
+        #inch the line forward - store as a temporary line
         for point in line:
             templine.append([point[0]+xComp, point[1]+yComp])
-        if not checkFieldCollision(templine) and distTraveled < dist:# and not checkWallCollision:
+        #if the line doesn't collide with anything and it hasn't reached the end of the path:
+        if not collideRectLine(templine) and distTraveled <=dist:# and not checkWallCollision:
+            #save the line as the temporary line that was moved forward
             line = copy.deepcopy(templine)
             xTraveled += xComp
             yTraveled += yComp
@@ -602,7 +798,7 @@ def correctPosition(pos1, pos2, reversed):
     return [int(pos1[0]+xTraveled), int(pos1[1]+yTraveled)]
 
 #Checks if the front of the robot is hitting the switch or scale
-def checkFieldCollision(line):
+def collideRectLine(line):
     #the line is the side of the robot that will be moving forward and hitting something
     #move from one end of the line to the other and test if any point on it intersects the switch or scale
     #deepcopy returns the value - prevents aliasing
@@ -615,7 +811,7 @@ def checkFieldCollision(line):
     xComp = math.cos(angle)
     yComp = math.sin(angle)
     
-    #distance required to test
+    #distance of line required to test
     dist = calcDist(templine[0], templine[1])
     #values to track how far forward the coordinates have been tested - compare to distance to test for, and end if it collides or finishes
     xTraveled = 0
@@ -639,12 +835,18 @@ def checkFieldCollision(line):
 
 #Checks if the front of the robot is hitting a wall
 def checkWallCollision(line):
+    #like checkFieldCollision, but only checks the two endpoints of the line rather than each point along it,
+    #because it's unnecessary for checking if you hit a wall
     templine = copy.deepcopy(line)
-    return
-
-#Takes in two angles from -180 to 180 and calculates their difference
+    
+#Takes in two angles from -180 to 180 and calculates the angle between them
 def calcAngleDifference(angle1, angle2):
-    pass
+    lower = min(angle1, angle2)
+    greater = max(angle1, angle2)
+    difference = greater - lower
+    if difference > 180:
+        difference = 360 - difference
+    return difference
 
 #Returns the distance between two pygame positions
 def calcDist(p1, p2):
