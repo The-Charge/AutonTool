@@ -224,13 +224,13 @@ def drawPath(screen, path):
 #Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
 def outputPath(path, key):
     if key == "LL":
-        file = open("pygameLL.txt", "w")
+        f = open("pygameLL.txt", "w")
     elif key == "LR":
-        file = open("pygameLR.txt", "w")
+        f = open("pygameLR.txt", "w")
     elif key == "RL":
-        file = open("pygameRL.txt", "w")
+        f = open("pygameRL.txt", "w")
     elif key == "RR":
-        file = open("pygameRR.txt", "w")
+        f = open("pygameRR.txt", "w")
     #delete the current contents
     f.seek(0)
     f.truncate()
@@ -248,17 +248,17 @@ def outputPath(path, key):
                 #turn it back into a positive number and round it
                 time = -1 * round(path[x][2], 2)
                 print("addSequential(new TimeOut(%s);" % time)
-                f.write("0 5 %s" % time)
+                f.write("0 5 %s\n" % time)
             #main() will tell outputPath() which DTC to use
             elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:
                 print("addSequential(new DriveToCurrent(.2, 5));")
-                f.write("0 3 0")
+                f.write("0 3 0\n")
             elif path[x][2] == DRIVE_TO_CURRENT_SCALE:
                 print("addSequential(new DriveToCurrent(.07, 1);")
-                f.write("0 3 1")
+                f.write("0 3 1\n")
             elif path[x][2] == OPEN_CLAW:
                 print("addSequential(new RunCollectorReverse(0.05));")
-                f.write("0 2 0.05")
+                f.write("0 2 0.05\n")
         #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
         if x != len(path)-1:
             #defines two consecutive points in the list
@@ -276,7 +276,7 @@ def outputPath(path, key):
             if angle != 999:
                 if x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH and calcAngleDifference(angle, previousAngle) > 2:
                     print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
-                    f.write("0 4 %s" % round(angle, 2))
+                    f.write("0 4 %s\n" % round(angle, 2))
                 #store the angle for future reference
                 previousAngle = angle
             #calculate the distance moved in feet
@@ -287,14 +287,14 @@ def outputPath(path, key):
             #commands to move the elevator
             if path[x][2] == SWITCH_POSITION:
                 print("addParallel(new ElevateToXPos(2));")
-                f.write("1 1 2")
+                f.write("1 1 2\n")
             elif path[x][2] == SCALE_POSITION:
                 print("addParallel(new ElevateToXPos(5));")
-                f.wriet("1 1 5")
+                f.wriet("1 1 5\n")
             #motion magic
             if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
                 print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
-                f.write("0 0 %s" % round(distance, 2))
+                f.write("0 0 %s\n" % round(distance, 2))
     f.close()
 
 #Checks boundaries of starting position
