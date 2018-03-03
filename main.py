@@ -42,8 +42,8 @@ STARTING = 7
 """
 
 #Field barriers
-LEFT_WALL = 22
-RIGHT_WALL = 401
+LEFT_WALL = 21
+RIGHT_WALL = 402
 TOP_BOUND = 48
 LOWER_BOUND = 468
 
@@ -787,7 +787,7 @@ def correctPosition(pos1, pos2):
         for point in line:
             templine.append([point[0]+xComp, point[1]+yComp])
         #if the line doesn't collide with anything and it hasn't reached the end of the path:
-        if not collideRectLine(templine) and distTraveled <=dist:# and not checkWallCollision:
+        if not collideRectLine(templine) and not checkWallCollision(templine) and distTraveled <=dist:
             #save the line as the temporary line that was moved forward
             line = copy.deepcopy(templine)
             xTraveled += xComp
@@ -837,7 +837,12 @@ def collideRectLine(line):
 def checkWallCollision(line):
     #like checkFieldCollision, but only checks the two endpoints of the line rather than each point along it,
     #because it's unnecessary for checking if you hit a wall
-    templine = copy.deepcopy(line)
+    for point in line:
+        xpos = point[0]
+        ypos = point[1]
+        if ypos < TOP_BOUND or ypos > LOWER_BOUND or xpos < LEFT_WALL or xpos > RIGHT_WALL:
+            return True
+    return False
     
 #Takes in two angles from -180 to 180 and calculates the angle between them
 def calcAngleDifference(angle1, angle2):
