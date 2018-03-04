@@ -606,6 +606,13 @@ def outputPath(path, key):
             elif path[x][2] == OPEN_CLAW:
                 print("addSequential(new RunCollectorReverse(0.05));")
                 f.write("0 2 0.05\n")
+            #commands to move the elevator
+            elif path[x][2] == SWITCH_POSITION:
+                print("addParallel(new ElevateToXPos(2));")
+                f.write("1 1 2\n")
+            elif path[x][2] == SCALE_POSITION:
+                print("addParallel(new ElevateToXPos(5));")
+                f.write("1 1 5\n")
         #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
         if x != len(path)-1:
             #defines two consecutive points in the list
@@ -632,13 +639,6 @@ def outputPath(path, key):
             #negative distance if going backwards
             if p2[2] == REVERSE:
                 distance = -1 * distance
-            #commands to move the elevator
-            if path[x][2] == SWITCH_POSITION:
-                print("addParallel(new ElevateToXPos(2));")
-                f.write("1 1 2\n")
-            elif path[x][2] == SCALE_POSITION:
-                print("addParallel(new ElevateToXPos(5));")
-                f.wriet("1 1 5\n")
             #motion magic
             if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
                 print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
@@ -742,7 +742,8 @@ def drawPath(screen, path):
     #draws a yellow dot at the center of each position
     for point in path:
         pygame.draw.circle(screen, YELLOW, point[:2], 2, 0)
-    
+    #set a default angle
+    angle = 0
     #go through every point in the path (except the last, because it looks ahead
     for x in range(len(path) - 1):
         #set two point to draw a path between
@@ -763,7 +764,7 @@ def drawPath(screen, path):
             drawRobot(screen, next_point[:2], angle, RED)
             #connect the points with a line
             pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
-        #draw a clock if the robot wait (if the third number is negative)
+        #draw a clock if the robot waits (if the third number is negative)
         elif next_point[2] < 0:
             #load an image
             timer = pygame.image.load("timer.png")
@@ -773,9 +774,17 @@ def drawPath(screen, path):
             pass
         elif next_point[2] == SCALE_POSITION:
             pass
-        elif next_pointp[2] == DROP:
-            pass
-    #since it looks at two positions, it needs different code if there's only one coordinate to look at
+        #draw a cube if the robot drops the cube
+        elif next_point[2] == OPEN_CLAW:
+            #find coordinate 40 pixels in front of robot
+            xComp = math.cos(math.radians(angle-90))
+            yComp = math.sin(math.radians(angle-90))
+            cubepos = [last_point[0]+xComp*40-8, last_point[1]+yComp*40-8]
+            #load cube image
+            cube = pygame.image.load("cube.png")
+            #display image on screen in front of the robot
+            screen.blit(cube, cubepos)
+    #since it looks at two positions at a time, it needs different code if there's only one coordinate to look at
     if len(path) > 0:
         drawRobot(screen, path[0][:2], 0, BLUE)
 
@@ -880,10 +889,10 @@ def linesIntersect(line1, line2):
     dist1 = calcDist(line1[0], line1[1])
     dist2 = calcDist(line2[0], line2[1])
     
-    xComp1 = math.cos(angle1-90)
-    yComp1 = math.sin(angle1-90)
-    xComp2 = math.cos(angle2-90)
-    yComp2 = math.sin(angle2-90)
+    xComp1 = math.cos(math.radians(angle1-90))
+    yComp1 = math.sin(math.radians(angle1-90))
+    xComp2 = math.cos(math.radians(angle2-90))
+    yComp2 = math.sin(math.radians(angle2-90))
     
     testPoint1 = line1[0]
     testPoint2 = line2[0]
