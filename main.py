@@ -28,19 +28,6 @@ DRIVE_TO_CURRENT_SCALE = 6
 STARTING = 7
 #timeouts will be -(value)
 
-"""
-0 = sequential
-1 = parallel
-
-
-0 = motionmagic (number feet)
-1 = elevatorposition (2 or 5)
-2 = runCollectorReverse(0.05)
-3 = drive to current (.2, 5)[0] or (.07, 1)[1]
-4 = turnNdegrees
-5 = wait
-"""
-
 #Field barriers
 LEFT_WALL = 21
 RIGHT_WALL = 402
@@ -223,6 +210,33 @@ def drawPath(screen, path):
 
 #Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
 def outputPath(path, key):
+    """
+    Output format - one command per line:
+    # # #
+    First number: 0 or 1
+        0 = addSequential
+        1 = addParallel
+    Second number: 0-5
+        0 = DriveXFeetMotionMagic
+        1 = ElevateToXPos
+        2 = RunCollectorReverse
+        3 = DriveToCurrent
+        4 = TurnNDegreesAbsolutePID
+        5 = WaitNSeconds
+    Third number: additional parameters
+        DriveXFeetMotionMagic:
+            number of feet, positive or negative
+        ElevateToXPos:
+            2 for switch, 5 for scale
+        RunCollectorReverse:
+            0.05, same for every instance
+        DriveToCurrent:
+            0 for switch, 1 for scale
+        TurnNDegreesAbsolutePID:
+            degree to turn to, from -180 to 180
+        WaitNSeconds:
+            # of seconds to wait
+    """
     if key == "LL":
         f = open("pygameLL.txt", "w")
     elif key == "LR":
@@ -247,7 +261,7 @@ def outputPath(path, key):
             if path[x][2] < 0:
                 #turn it back into a positive number and round it
                 time = -1 * round(path[x][2], 2)
-                print("addSequential(new TimeOut(%s);" % time)
+                print("addSequential(new WaitNSeconds(%s);" % time)
                 f.write("0 5 %s\n" % time)
             #main() will tell outputPath() which DTC to use
             elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:

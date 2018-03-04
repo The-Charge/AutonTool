@@ -1,0 +1,116 @@
+Instructions for PowerUpBot2018 Auton Tool (aka pygame)
+
+Since the positions of the alliance's switch and scales are randomized at the start of the match,
+this tool allows you to draw out a path that the robot will take for each of the four possible outcomes.
+The program will write instructions to a file, which will be read by the roboRIO on the robot to generate a series of
+commands during the autonomous period.
+
+-----------------
+MOVING THE ROBOT
+
+Left click anywhere on the field to move the robot. It will automatically turn and move the robot to the cursor's
+position, as long as there is nothing in the way.
+
+-----------------
+DELTING ACTIONS
+
+Right click anywhere on the screen to delete your last action.
+>>>Doesn't work with cloning paths
+
+-----------------
+LL-LR-RL-RR
+
+These buttons will switch the path you are currently working on. The first letter represents your switch position,
+and the second represents you scale position. Both the switch and the scale are highlighted on the screen to show
+which mode you are currently in.
+>>>Switching branches doesn't delete anything - everything is saved separately
+
+-----------------
+CLONE
+
+This will allow you to copy the current path onto another. Click it to enable CLONE mode, then click on the branch you
+want to copy to. You can click CLONE again to stop without copying a path.
+
+-----------------
+TO ALL
+
+TO ALL will copy the current path to all other paths.
+>>>Don't accidentally click this if you don't want to
+
+-----------------
+EXPORT
+
+Write instructions to a file for the robot to read, as well as print out a description of the path the robot will
+take for each of the four switch/scale positions
+>>>Make sure this is clicked after all other changes are made
+
+-----------------
+D.T.C.
+
+Drive To Current will make the robot move forwards until it hits something. You must have already raised the elevator
+into position before using DTC, and won't be able to click it until doing so. This is used to drive up to the switch or
+scale to ensure the robot is in contact with it before dropping a cube.
+There are two ways to call the DriveToCurrent command: one relatively fast, and one slower. Which one is used depends on
+which position the elevator is in. If it is raised all the way up, it will move slowly so the elevator will hit the
+scale gently before stopping. If it is only raised to the switch position, it will move forward more quickly.
+>>>Make sure this is used before dropping a cube into the switch or scale
+
+-----------------
+SWITCH
+
+Raises the elevator in position to drop a cube into the switch.
+
+-----------------
+SCALE
+
+Raises the elevator in position to drop a cube into the scale.
+
+----------------------------------
+>>>Note about SWITCH and SCALE:
+Elevator position commands are done in parallel. This means it will execute at the same time as the one that command
+after it. Ideally, the elevator should be raised while moving forward, so when drawing the path, make sure
+you click SWITCH or SCALE before moving the robot into position.
+----------------------------------
+
+-----------------
+WAIT
+
+Pauses the program to take in a keboard input. Type in the number of seconds that you want the robot to wait for at
+its current position. Press enter to add the command. If you want to leave this mode without adding a pause, press
+ESC or click WAIT again.
+
+-----------------
+DROP
+
+Runs the cube collector backward to launch the cube out. Can only be used if the elevator is in position
+(after SWITCH or SCALE has been clicked)
+
+-----------------
+REVERSE
+
+Enables driving backwards when clicking to move the robot. Particularly useful when backing up after dropping
+a cube in the switch or scale.
+
+----------------------------------
+SAMPLE RUN - left switch and move forward
+
+>>>click on field below alliance switch
+	Places robot on starting line facing the switch
+>>>SWITCH
+	Robot raises elevator to switch position
+>>>click close to the switch
+	Robot moves forward to area near switch
+>>>D.T.C.
+	Robot moves forward until it hits the switch
+>>>DROP
+	Robot drops cube into switch
+>>>REVERSE
+	Toggle reverse mode on
+>>>click on field behind robot
+	Robot backs up to cursor position without changing direction
+>>>REVERSE
+	Toggle reverse mode off
+>>>click on field to left of robot
+	Robot turns 90deg left and moves forward to cursor position
+>>>click far end of field
+	Robot turns 90deg right (to 0 deg absolute) and moves forward to cursor position
