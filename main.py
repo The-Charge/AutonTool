@@ -33,6 +33,8 @@ LEFT_WALL = 21
 RIGHT_WALL = 402
 TOP_BOUND = 48
 LOWER_BOUND = 468
+PORTAL_LEFT = ((16, 421), (57, 472))    #2 points for a diagonal line
+PORTAL_RIGHT = ((402, 421), (362, 471))
 
 #Switch and Scales
 #SWITCH and SCALE are the entire thing, SWITCH_LEFT etc are for drawing the white rectangles
@@ -77,282 +79,7 @@ ROBOT_DIMS_FEET = [dim / 12 for dim in ROBOT_DIMS_INCHES]
 SIDE = int(ROBOT_DIMS_FEET[0] * PIXELS_PER_FOOT / 2)
 FRONT = int(ROBOT_DIMS_FEET[1] * PIXELS_PER_FOOT / 2)
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
-
-#Draws buttons
-def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes):
-    font = pygame.font.SysFont('arial', 22, True)
-    numDisplay = ""
-    if waitInput:
-        numDisplay = "Enter a time: "
-        for digit in timeList:
-            numDisplay += digit
-        
-    text0 = font.render(' LL', True, BLACK)
-    text1 = font.render(' LR', True, BLACK)
-    text2 = font.render(' RL', True, BLACK)
-    text3 = font.render(' RR', True, BLACK)
-    text4 = font.render('CLONE', True, BLACK)
-    text5 = font.render('TO ALL', True, BLACK)
-    text6 = font.render(' EXPORT', True, BLACK)
-    text7 = font.render('D.T.C.', True, BLACK)
-    text8 = font.render('SWITCH', True, BLACK)
-    text9 = font.render('SCALE', True, BLACK)
-    text10 = font.render('  WAIT', True, BLACK)
-    text11 = font.render(' DROP', True, BLACK)
-    text12 = font.render('REVERSE', True, BLACK)
-    textNumber = font.render(numDisplay, True, BLACK)
-    
-    pygame.draw.rect(screen, GREEN, BTN_LL, 0)
-    pygame.draw.rect(screen, YELLOW, BTN_LR, 0) 
-    pygame.draw.rect(screen, GREEN, BTN_RL, 0) 
-    pygame.draw.rect(screen, YELLOW, BTN_RR, 0) 
-    pygame.draw.rect(screen, YELLOW, BTN_CLONE, 0) 
-    pygame.draw.rect(screen, GREEN, BTN_ALL, 0) 
-    pygame.draw.rect(screen, YELLOW, BTN_EXPORT, 0)
-    pygame.draw.rect(screen, YELLOW, BTN_DTC, 0)
-    pygame.draw.rect(screen, GREEN, BTN_SWITCH, 0)
-    pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
-    pygame.draw.rect(screen, GREEN, BTN_WAIT, 0)
-    pygame.draw.rect(screen, YELLOW, BTN_DROP, 0)
-    pygame.draw.rect(screen, GREEN, BTN_REVERSE, 0)
-    pygame.draw.line(screen, GREEN, BTN_RR.topright, BTN_RR.bottomright, 2)
-    
-    if currentPath == "LL":
-        pygame.draw.rect(screen, BLACK, BTN_LL, 2)
-        pygame.draw.rect(screen, WHITE, SWITCH_LEFT, 3)
-        pygame.draw.rect(screen, WHITE, SCALE_LEFT, 3)
-    elif currentPath == "LR":
-        pygame.draw.rect(screen, BLACK, BTN_LR, 2)
-        pygame.draw.rect(screen, WHITE, SWITCH_LEFT, 3)
-        pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
-    elif currentPath == "RL":
-        pygame.draw.rect(screen, BLACK, BTN_RL, 2)
-        pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
-        pygame.draw.rect(screen, WHITE, SCALE_LEFT, 3)
-    elif currentPath == "RR":
-        pygame.draw.rect(screen, BLACK, BTN_RR, 2)
-        pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
-        pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
-    
-    if cloning:
-        pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
-    if waitInput:
-        pygame.draw.rect(screen, BLACK, BTN_WAIT, 2)
-    if variables[currentPath]["reversed"]:
-        pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
-    
-    for button in buttonSizes:
-        if timers[str(button)] > 0:
-            pygame.draw.rect(screen, BLACK, button, 2)
-            timers[str(button)] -= SECONDS_PER_TICK
-        if timers[str(button)] < 0:
-            timers[str(button)] = 0
-    
-    screen.blit(text0, BTN_LL.topleft)
-    screen.blit(text1, BTN_LR.topleft)
-    screen.blit(text2, BTN_RL.topleft)
-    screen.blit(text3, BTN_RR.topleft)
-    screen.blit(text4, BTN_CLONE.topleft)
-    screen.blit(text5, BTN_ALL.topleft)
-    screen.blit(text6, BTN_EXPORT.topleft)
-    screen.blit(text7, BTN_DTC.topleft)
-    screen.blit(text8, BTN_SWITCH.topleft)
-    screen.blit(text9, BTN_SCALE.topleft)
-    screen.blit(text10, BTN_WAIT.topleft)
-    screen.blit(text11, BTN_DROP.topleft)
-    screen.blit(text12, BTN_REVERSE.topleft)
-    screen.blit(textNumber, (0, CONTROL_BORDER-35))
-
-#Draws the robot at the given angle
-def drawRobot(screen, point, angle, color):
-    #finds 4 points around the robot's center at the correct angle for the corners and draws a polygon around them
-    baseAngle = 48.972495940751 + angle
-    baseAngle -= 90
-    angles = [baseAngle, baseAngle + 82.055008118498, baseAngle + 180, baseAngle + 262.0550081185]
-    rads = [math.radians(angle) for angle in angles]
-    x_points = [math.cos(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[0] for rad in rads]
-    y_points = [math.sin(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[1] for rad in rads]
-    points = []
-    for i in range(len(x_points)):
-        points.append([x_points[i], y_points[i]])
-    pygame.draw.polygon(screen, color, points, 1)
-    pygame.draw.line(screen, BLACK, points[3], points[0], 2)
-
-#Draws the robot's path and positions
-def drawPath(screen, path):
-    #draws a yellow dot at the center of each position
-    for point in path:
-        pygame.draw.circle(screen, YELLOW, point[:2], 2, 0)
-    
-    #go through every point in the path (except the last, because it looks ahead
-    for x in range(len(path) - 1):
-        #set two point to draw a path between
-        last_point = path[x]
-        next_point = path[x + 1]
-        #do nothing if the positional coordinates (first two numbers) are identical to the last (doesn't move)
-        if next_point[:2] != last_point[:2]:
-            #find the angle for drawRobot() to use
-            angle = calcAngle(last_point[:2], next_point[:2])
-            #flip it if you're moving backwards
-            if next_point[2] == REVERSE:
-                if angle < 0:
-                    angle += 180
-                else:
-                    angle -= 180
-            #draw a blue and red robot at the start and finish of the path
-            drawRobot(screen, last_point[:2], angle, BLUE)
-            drawRobot(screen, next_point[:2], angle, RED)
-            #connect the points with a line
-            pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
-    #since it looks at two positions, it needs different code if there's only one coordinate to look at
-    if len(path) > 0:
-        drawRobot(screen, path[0][:2], 0, BLUE)
-
-#Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
-def outputPath(path, key):
-    """
-    Output format - one command per line:
-    # # #
-    First number: 0 or 1
-        0 = addSequential
-        1 = addParallel
-    Second number: 0-5
-        0 = DriveXFeetMotionMagic
-        1 = ElevateToXPos
-        2 = RunCollectorReverse
-        3 = DriveToCurrent
-        4 = TurnNDegreesAbsolutePID
-        5 = WaitNSeconds
-    Third number: additional parameters
-        DriveXFeetMotionMagic:
-            number of feet, positive or negative
-        ElevateToXPos:
-            2 for switch, 5 for scale
-        RunCollectorReverse:
-            0.05, same for every instance
-        DriveToCurrent:
-            0 for switch, 1 for scale
-        TurnNDegreesAbsolutePID:
-            degree to turn to, from -180 to 180
-        WaitNSeconds:
-            # of seconds to wait
-    """
-    if key == "LL":
-        f = open("pygameLL.txt", "w")
-    elif key == "LR":
-        f = open("pygameLR.txt", "w")
-    elif key == "RL":
-        f = open("pygameRL.txt", "w")
-    elif key == "RR":
-        f = open("pygameRR.txt", "w")
-    #delete the current contents
-    f.seek(0)
-    f.truncate()
-    #the robot's angle will always start at 0deg
-    previousAngle = 0
-    #All auton is done in low gear
-    print("addSequential(new ShiftLow());")
-    #Take each coordinate in the path
-    for x in range(len(path)):
-        #certain actions won't be read in unless there is >= 1 coordinate in the path (the robot has been placed down)
-        if len(path) > 0:
-            #path[x][2] is the third coordinate - it gives additional instructions (see constants above)
-            #wait timers are just negative numbers
-            if path[x][2] < 0:
-                #turn it back into a positive number and round it
-                time = -1 * round(path[x][2], 2)
-                print("addSequential(new WaitNSeconds(%s);" % time)
-                f.write("0 5 %s\n" % time)
-            #main() will tell outputPath() which DTC to use
-            elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:
-                print("addSequential(new DriveToCurrent(.2, 5));")
-                f.write("0 3 0\n")
-            elif path[x][2] == DRIVE_TO_CURRENT_SCALE:
-                print("addSequential(new DriveToCurrent(.07, 1);")
-                f.write("0 3 1\n")
-            elif path[x][2] == OPEN_CLAW:
-                print("addSequential(new RunCollectorReverse(0.05));")
-                f.write("0 2 0.05\n")
-        #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
-        if x != len(path)-1:
-            #defines two consecutive points in the list
-            p1 = path[x]
-            p2 = path[x + 1]
-            #find the angle from point a to b
-            angle = calcAngle(p1[:2], p2[:2])
-            #flip the angle if reverse drive is enabled
-            if p2[2] == REVERSE:
-                if angle < 0:
-                    angle += 180
-                else:
-                    angle -= 180
-            #don't turn if you activate something that doesn't require turning
-            if angle != 999:
-                if x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH and calcAngleDifference(angle, previousAngle) > 2:
-                    print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
-                    f.write("0 4 %s\n" % round(angle, 2))
-                #store the angle for future reference
-                previousAngle = angle
-            #calculate the distance moved in feet
-            distance = calcDist(p2[:2], p1[:2]) / PIXELS_PER_FOOT
-            #negative distance if going backwards
-            if p2[2] == REVERSE:
-                distance = -1 * distance
-            #commands to move the elevator
-            if path[x][2] == SWITCH_POSITION:
-                print("addParallel(new ElevateToXPos(2));")
-                f.write("1 1 2\n")
-            elif path[x][2] == SCALE_POSITION:
-                print("addParallel(new ElevateToXPos(5));")
-                f.wriet("1 1 5\n")
-            #motion magic
-            if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
-                print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
-                f.write("0 0 %s\n" % round(distance, 2))
-    f.close()
-
-#Checks boundaries of starting position
-def checkStart(xpos):
-    if xpos < LEFT_BOUND:
-        xpos = LEFT_BOUND
-    if xpos > RIGHT_BOUND:
-        xpos = RIGHT_BOUND
-    if xpos > EXCHANGE_LEFT and xpos < EXCHANGE_LEFT + 52:
-        xpos = EXCHANGE_LEFT
-    if xpos < EXCHANGE_RIGHT and xpos >= EXCHANGE_RIGHT - 52:
-        xpos = EXCHANGE_RIGHT
-    return xpos
-
-#Checks boundaries of first move
-def checkFirstMove(point, path):
-    #prevents the first move (forward) from going past the switch/scale
-    if path[-1][0]+SIDE > SCALE.left and path[-1][0]-SIDE < SCALE.right:
-        if path[-1][0]+SIDE > SWITCH.left and path[-1][0]-SIDE < SWITCH.right:
-            if point[1]-FRONT < SWITCH.bottom:
-                ypos = SWITCH.bottom+FRONT
-            else:
-                ypos = point[1]
-        else:
-            if point[1]-FRONT < SCALE.bottom:
-                ypos = SCALE.bottom+FRONT
-            else:
-                ypos = point[1]
-    else:
-        if point[1]-FRONT < TOP_BOUND:
-            ypos = TOP_BOUND+FRONT
-        elif point[1]-FRONT > LOWER_BOUND:
-            ypos = LOWER_BOUND-FRONT
-        else:
-            ypos = point[1]
-    return ypos
-
-#Not sure how aliasing works in python, so it uses a completely different list
-def clone(path):
-    newPath = []
-    for point in path:
-        newPath.append(point)
-    return newPath
-    
+   
 def main():
     #start on the "LL" tab
     currentPath = "LL"
@@ -669,7 +396,7 @@ def main():
                     #update the window text
                     pygame.display.set_caption("AutonTool: " + currentPath)
             #right click
-            #remove the last coordinate/instruction given
+            #remove the last coordinate/instruction given from paths[] and update the robot's state in variables[]
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 #do nothing if there's nothing in paths[currentPath] - nothing to delete
                 if len(paths[currentPath]) > 0:
@@ -769,20 +496,23 @@ def correctPosition(pos1, pos2):
     #convert to radians and find components
     xComp = math.cos(math.radians(angle-90))
     yComp = math.sin(math.radians(angle-90))
+    if angle == 0:
+        xComp = 0
+        yComp = -1
+    elif angle == 90:
+        xComp = 1
+        yComp = 0
+    elif angle == -90:
+        xComp = -1
+        yComp = 0
+    elif angle == 180 or angle == -180:
+        xComp = 0
+        yComp = 1
     
-    #code copied from drawRobot() used to find 4 corners of robot at given direction
-    baseAngle = 48.972495940751 + angle
-    baseAngle -= 90
-    angles = [baseAngle, baseAngle + 82.055008118498, baseAngle + 180, baseAngle + 262.0550081185]
-    rads = [math.radians(angle) for angle in angles]
-    x_points = [math.cos(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + pos1[0] for rad in rads]
-    y_points = [math.sin(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + pos1[1] for rad in rads]
-    points = []
-    for i in range(len(x_points)):
-        points.append([x_points[i], y_points[i]])
-    #points is a list of 4 coordinates
+    #find coordinates for corners - list of 4 points
+    corners = findCorners(pos1, angle)
     #take 2 coordinates from points to make a line
-    line = [points[0], points[3]]
+    line = [corners[0], corners[3]]
     
     #
     distTraveled = 0
@@ -811,6 +541,286 @@ def correctPosition(pos1, pos2):
             scanning = False
     return [int(pos1[0]+xTraveled), int(pos1[1]+yTraveled)]
 
+#Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
+def outputPath(path, key):
+    """
+    Output format - one command per line:
+    # # #
+    First number: 0 or 1
+        0 = addSequential
+        1 = addParallel
+    Second number: 0-5
+        0 = DriveXFeetMotionMagic
+        1 = ElevateToXPos
+        2 = RunCollectorReverse
+        3 = DriveToCurrent
+        4 = TurnNDegreesAbsolutePID
+        5 = WaitNSeconds
+    Third number: additional parameters
+        DriveXFeetMotionMagic:
+            number of feet, positive or negative
+        ElevateToXPos:
+            2 for switch, 5 for scale
+        RunCollectorReverse:
+            0.05, same for every instance
+        DriveToCurrent:
+            0 for switch, 1 for scale
+        TurnNDegreesAbsolutePID:
+            degree to turn to, from -180 to 180
+        WaitNSeconds:
+            # of seconds to wait
+    """
+    if key == "LL":
+        f = open("pygameLL.txt", "w")
+    elif key == "LR":
+        f = open("pygameLR.txt", "w")
+    elif key == "RL":
+        f = open("pygameRL.txt", "w")
+    elif key == "RR":
+        f = open("pygameRR.txt", "w")
+    #delete the current contents of the file
+    f.seek(0)
+    f.truncate()
+    #the robot's angle will always start at 0deg
+    previousAngle = 0
+    #All auton is done in low gear
+    print("addSequential(new ShiftLow());")
+    #Take each coordinate in the path
+    for x in range(len(path)):
+        #certain actions won't be read in unless there is >= 1 coordinate in the path (the robot has been placed down)
+        if len(path) > 0:
+            #path[x][2] is the third coordinate - it gives additional instructions (see constants above)
+            #wait timers are just negative numbers
+            if path[x][2] < 0:
+                #turn it back into a positive number and round it
+                time = -1 * round(path[x][2], 2)
+                print("addSequential(new WaitNSeconds(%s);" % time)
+                f.write("0 5 %s\n" % time)
+            #main() will tell outputPath() which DTC to use
+            elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:
+                print("addSequential(new DriveToCurrent(.2, 5));")
+                f.write("0 3 0\n")
+            elif path[x][2] == DRIVE_TO_CURRENT_SCALE:
+                print("addSequential(new DriveToCurrent(.07, 1);")
+                f.write("0 3 1\n")
+            elif path[x][2] == OPEN_CLAW:
+                print("addSequential(new RunCollectorReverse(0.05));")
+                f.write("0 2 0.05\n")
+        #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
+        if x != len(path)-1:
+            #defines two consecutive points in the list
+            p1 = path[x]
+            p2 = path[x + 1]
+            #find the angle from point a to b
+            angle = calcAngle(p1[:2], p2[:2])
+            #flip the angle if reverse drive is enabled
+            if p2[2] == REVERSE:
+                if angle < 0:
+                    angle += 180
+                else:
+                    angle -= 180
+            #don't turn if you activate something that doesn't require turning
+            if angle != 999:
+                #if you're doing DTC or the angle difference is negligable, don't turns
+                if x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH and calcAngleDifference(angle, previousAngle) > 2:
+                    print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
+                    f.write("0 4 %s\n" % round(angle, 2))
+                #store the angle for future reference
+                previousAngle = angle
+            #calculate the distance moved in feet
+            distance = calcDist(p2[:2], p1[:2]) / PIXELS_PER_FOOT
+            #negative distance if going backwards
+            if p2[2] == REVERSE:
+                distance = -1 * distance
+            #commands to move the elevator
+            if path[x][2] == SWITCH_POSITION:
+                print("addParallel(new ElevateToXPos(2));")
+                f.write("1 1 2\n")
+            elif path[x][2] == SCALE_POSITION:
+                print("addParallel(new ElevateToXPos(5));")
+                f.wriet("1 1 5\n")
+            #motion magic
+            if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
+                print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
+                f.write("0 0 %s\n" % round(distance, 2))
+    f.close()
+
+#Draws buttons
+def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes):
+    font = pygame.font.SysFont('arial', 22, True)
+    numDisplay = ""
+    if waitInput:
+        numDisplay = "Enter a time: "
+        for digit in timeList:
+            numDisplay += digit
+        
+    text0 = font.render(' LL', True, BLACK)
+    text1 = font.render(' LR', True, BLACK)
+    text2 = font.render(' RL', True, BLACK)
+    text3 = font.render(' RR', True, BLACK)
+    text4 = font.render('CLONE', True, BLACK)
+    text5 = font.render('TO ALL', True, BLACK)
+    text6 = font.render(' EXPORT', True, BLACK)
+    text7 = font.render('D.T.C.', True, BLACK)
+    text8 = font.render('SWITCH', True, BLACK)
+    text9 = font.render('SCALE', True, BLACK)
+    text10 = font.render('  WAIT', True, BLACK)
+    text11 = font.render(' DROP', True, BLACK)
+    text12 = font.render('REVERSE', True, BLACK)
+    textNumber = font.render(numDisplay, True, BLACK)
+    
+    pygame.draw.rect(screen, GREEN, BTN_LL, 0)
+    pygame.draw.rect(screen, YELLOW, BTN_LR, 0) 
+    pygame.draw.rect(screen, GREEN, BTN_RL, 0) 
+    pygame.draw.rect(screen, YELLOW, BTN_RR, 0) 
+    pygame.draw.rect(screen, YELLOW, BTN_CLONE, 0) 
+    pygame.draw.rect(screen, GREEN, BTN_ALL, 0) 
+    pygame.draw.rect(screen, YELLOW, BTN_EXPORT, 0)
+    pygame.draw.rect(screen, YELLOW, BTN_DTC, 0)
+    pygame.draw.rect(screen, GREEN, BTN_SWITCH, 0)
+    pygame.draw.rect(screen, YELLOW, BTN_SCALE, 0)
+    pygame.draw.rect(screen, GREEN, BTN_WAIT, 0)
+    pygame.draw.rect(screen, YELLOW, BTN_DROP, 0)
+    pygame.draw.rect(screen, GREEN, BTN_REVERSE, 0)
+    pygame.draw.line(screen, GREEN, BTN_RR.topright, BTN_RR.bottomright, 2)
+    
+    if currentPath == "LL":
+        pygame.draw.rect(screen, BLACK, BTN_LL, 2)
+        pygame.draw.rect(screen, WHITE, SWITCH_LEFT, 3)
+        pygame.draw.rect(screen, WHITE, SCALE_LEFT, 3)
+    elif currentPath == "LR":
+        pygame.draw.rect(screen, BLACK, BTN_LR, 2)
+        pygame.draw.rect(screen, WHITE, SWITCH_LEFT, 3)
+        pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
+    elif currentPath == "RL":
+        pygame.draw.rect(screen, BLACK, BTN_RL, 2)
+        pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
+        pygame.draw.rect(screen, WHITE, SCALE_LEFT, 3)
+    elif currentPath == "RR":
+        pygame.draw.rect(screen, BLACK, BTN_RR, 2)
+        pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
+        pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
+    
+    if cloning:
+        pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
+    if waitInput:
+        pygame.draw.rect(screen, BLACK, BTN_WAIT, 2)
+    if variables[currentPath]["reversed"]:
+        pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
+    
+    for button in buttonSizes:
+        if timers[str(button)] > 0:
+            pygame.draw.rect(screen, BLACK, button, 2)
+            timers[str(button)] -= SECONDS_PER_TICK
+        if timers[str(button)] < 0:
+            timers[str(button)] = 0
+    
+    screen.blit(text0, BTN_LL.topleft)
+    screen.blit(text1, BTN_LR.topleft)
+    screen.blit(text2, BTN_RL.topleft)
+    screen.blit(text3, BTN_RR.topleft)
+    screen.blit(text4, BTN_CLONE.topleft)
+    screen.blit(text5, BTN_ALL.topleft)
+    screen.blit(text6, BTN_EXPORT.topleft)
+    screen.blit(text7, BTN_DTC.topleft)
+    screen.blit(text8, BTN_SWITCH.topleft)
+    screen.blit(text9, BTN_SCALE.topleft)
+    screen.blit(text10, BTN_WAIT.topleft)
+    screen.blit(text11, BTN_DROP.topleft)
+    screen.blit(text12, BTN_REVERSE.topleft)
+    screen.blit(textNumber, (0, CONTROL_BORDER-35))
+
+#Draws the robot at the given angle
+def drawRobot(screen, point, angle, color):
+    #finds 4 points around the robot's center at the correct angle for the corners and draws a polygon around them
+    points = findCorners(point, angle)
+    pygame.draw.polygon(screen, color, points, 1)
+    pygame.draw.line(screen, BLACK, points[3], points[0], 2)
+
+#Draws the robot's path and positions
+def drawPath(screen, path):
+    #draws a yellow dot at the center of each position
+    for point in path:
+        pygame.draw.circle(screen, YELLOW, point[:2], 2, 0)
+    
+    #go through every point in the path (except the last, because it looks ahead
+    for x in range(len(path) - 1):
+        #set two point to draw a path between
+        last_point = path[x]
+        next_point = path[x + 1]
+        #don't draw anything if the positional coordinates (first two numbers) are identical to the last (doesn't move)
+        if next_point[:2] != last_point[:2]:
+            #find the angle for drawRobot() to use
+            angle = calcAngle(last_point[:2], next_point[:2])
+            #flip it if you're moving backwards
+            if next_point[2] == REVERSE:
+                if angle < 0:
+                    angle += 180
+                else:
+                    angle -= 180
+            #draw a blue and red robot at the start and finish of the path
+            drawRobot(screen, last_point[:2], angle, BLUE)
+            drawRobot(screen, next_point[:2], angle, RED)
+            #connect the points with a line
+            pygame.draw.line(screen, YELLOW, last_point[:2], next_point[:2], 1)
+        #draw a clock if the robot wait (if the third number is negative)
+        elif next_point[2] < 0:
+            #load an image
+            timer = pygame.image.load("timer.png")
+            #display the image on the screen near the robot
+            screen.blit(timer, (next_point[0]-13, next_point[1]-20))
+        elif next_point[2] == SWITCH_POSITION:
+            pass
+        elif next_point[2] == SCALE_POSITION:
+            pass
+        elif next_pointp[2] == DROP:
+            pass
+    #since it looks at two positions, it needs different code if there's only one coordinate to look at
+    if len(path) > 0:
+        drawRobot(screen, path[0][:2], 0, BLUE)
+
+#Checks boundaries of starting position
+def checkStart(xpos):
+    if xpos < LEFT_BOUND:
+        xpos = LEFT_BOUND
+    if xpos > RIGHT_BOUND:
+        xpos = RIGHT_BOUND
+    if xpos > EXCHANGE_LEFT and xpos < EXCHANGE_LEFT + 52:
+        xpos = EXCHANGE_LEFT
+    if xpos < EXCHANGE_RIGHT and xpos >= EXCHANGE_RIGHT - 52:
+        xpos = EXCHANGE_RIGHT
+    return xpos
+
+#Checks boundaries of first move
+def checkFirstMove(point, path):
+    #prevents the first move (forward) from going past the switch/scale
+    if path[-1][0]+SIDE > SCALE.left and path[-1][0]-SIDE < SCALE.right:
+        if path[-1][0]+SIDE > SWITCH.left and path[-1][0]-SIDE < SWITCH.right:
+            if point[1]-FRONT < SWITCH.bottom:
+                ypos = SWITCH.bottom+FRONT
+            else:
+                ypos = point[1]
+        else:
+            if point[1]-FRONT < SCALE.bottom:
+                ypos = SCALE.bottom+FRONT
+            else:
+                ypos = point[1]
+    else:
+        if point[1]-FRONT < TOP_BOUND:
+            ypos = TOP_BOUND+FRONT
+        elif point[1]-FRONT > LOWER_BOUND:
+            ypos = LOWER_BOUND-FRONT
+        else:
+            ypos = point[1]
+    return ypos
+
+#Not sure how aliasing works in python, so it uses a completely different list
+def clone(path):
+    newPath = []
+    for point in path:
+        newPath.append(point)
+    return newPath
+ 
 #Checks if the front of the robot is hitting the switch or scale
 def collideRectLine(line):
     #the line is the side of the robot that will be moving forward and hitting something
@@ -857,7 +867,57 @@ def checkWallCollision(line):
         if ypos < TOP_BOUND or ypos > LOWER_BOUND or xpos < LEFT_WALL or xpos > RIGHT_WALL:
             return True
     return False
+
+#Return True if two lines intersect
+#slows the program down too much, DO NOT USE
+def linesIntersect(line1, line2):
+    line1 = [[line1[0][0], line1[0][1]], [line1[1][0], line1[1][1]]]
+    line2 = [[line2[0][0], line2[0][1]], [line2[1][0], line2[1][1]]]
     
+    angle1 = calcAngle(line1[0], line1[1])
+    angle2 = calcAngle(line2[0], line2[1])
+    
+    dist1 = calcDist(line1[0], line1[1])
+    dist2 = calcDist(line2[0], line2[1])
+    
+    xComp1 = math.cos(angle1-90)
+    yComp1 = math.sin(angle1-90)
+    xComp2 = math.cos(angle2-90)
+    yComp2 = math.sin(angle2-90)
+    
+    testPoint1 = line1[0]
+    testPoint2 = line2[0]
+    
+    xTraveled1 = 0
+    yTraveled1 = 0
+    xTraveled2 = 0
+    yTraveled2 = 0
+    
+    distTraveled1 = 0
+    distTraveled2 = 0
+    scanning = True
+    incrementLine = True
+    
+    while distTraveled1 < dist1:
+        testPoint2 = line2[0]
+        distTraveled2 = 0
+        xTraveled2 = 0
+        yTraveled2 = 0
+        while distTraveled2 < dist2:
+            if [int(testPoint1[0]), int(testPoint1[1])] == [int(testPoint2[0]), int(testPoint2[1])]:
+                return True
+            testPoint2[0] += xComp2
+            testPoint2[1] += yComp2
+            xTraveled2 += xComp2
+            yTraveled2 += yComp2
+            distTraveled2 = calcDist([int(xTraveled2), int(yTraveled2)], [0, 0])
+        testPoint1[0] += xComp1
+        testPoint1[1] += yComp1
+        xTraveled1 += xComp1
+        yTraveled1 += yComp1
+        distTraveled1 = calcDist([int(xTraveled1), int(yTraveled1)], [0, 0])
+    return False
+
 #Takes in two angles from -180 to 180 and calculates the angle between them
 def calcAngleDifference(angle1, angle2):
     lower = min(angle1, angle2)
@@ -870,6 +930,19 @@ def calcAngleDifference(angle1, angle2):
 #Returns the distance between two pygame positions
 def calcDist(p1, p2):
     return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+#Take the robot's position and angle and calculate where the corners of the robot are
+def findCorners(point, angle):
+    baseAngle = 48.972495940751 + angle
+    baseAngle -= 90
+    angles = [baseAngle, baseAngle + 82.055008118498, baseAngle + 180, baseAngle + 262.0550081185]
+    rads = [math.radians(angle) for angle in angles]
+    x_points = [math.cos(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[0] for rad in rads]
+    y_points = [math.sin(rad) * ROBOT_DIAG_FEET * PIXELS_PER_FOOT + point[1] for rad in rads]
+    points = []
+    for i in range(len(x_points)):
+        points.append([x_points[i], y_points[i]])
+    return points
 
 #Appends a digit to either a whole number or decimal list
 #Used with WAIT
