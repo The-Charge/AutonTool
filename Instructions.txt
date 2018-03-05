@@ -107,7 +107,7 @@ SAMPLE RUN - left switch and move forward
 >>>REVERSE
 	Toggle reverse mode on
 >>>click on field behind robot
-	Robot backs up to cursor position without changing direction
+	Robot backs up to cursor position
 >>>REVERSE
 	Toggle reverse mode off
 >>>click on field to left of robot

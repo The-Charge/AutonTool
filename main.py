@@ -47,7 +47,7 @@ SCALE_RIGHT = pygame.Rect((275, 59, 42, 56))
 
 # Conversion factors
 PIXELS_PER_FOOT = 13.75
-SECONDS_PER_TICK = .019
+SECONDS_PER_TICK = .018
 
 # Colors
 WHITE = (255, 255, 255)
@@ -57,7 +57,7 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 GRAY = (100, 100, 100)
-DARK_GRAY = (25, 25, 25)
+DARK_GRAY = (35, 35, 35)
 
 # Button positions
 #defining rectangles for every button on the bottom of the screen
@@ -314,10 +314,8 @@ def main():
                     #BTN_EXPORT
                     elif indexClicked == 6 and not waitInput:
                         timers[str(BTN_EXPORT)] = .1
-                        #write instructions to a file
-                        """
-                        needs changing
-                        """
+                        #writing instructions to a file is done in outputPath()
+                        #output to the console will be done here
                         print("\n----------------------------------------\n-----LL-----")
                         outputPath(paths["LL"], "LL")
                         print("\n-----LR-----")
@@ -335,17 +333,21 @@ def main():
                             timers[str(BTN_DTC)] = .1
                             lastPoint = paths[currentPath][-1]
                             #find current angle in radians
-                            angle = math.radians(angles[currentPath][-1]-90)
+                            angle = angles[currentPath][-1]
+                            angle-=90
+                            angle = math.radians(angle)
                             xComp = math.cos(angle)
                             yComp = math.sin(angle)
-                            newPoint = (int(lastPoint[0] + xComp*1000), int(lastPoint[1] + yComp*1000))
+                            #create a point very far away in the robot's current direction
+                            #then use the regular correctPosition function to stop it before it hits an obstacle
+                            newPoint = (lastPoint[0] + xComp*1000, lastPoint[1] + yComp*1000)
                             newPoint = correctPosition(lastPoint, newPoint)
                             #the positioning is only for the pygame to use. The robot will only see the DTC command
                             #use the write DTC parameters for the current elevator position
                             if variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
-                                paths[currentPath].append((newPoint[0], newPoint[1], DRIVE_TO_CURRENT_SWITCH))
+                                paths[currentPath].append((int(newPoint[0]), int(newPoint[1]), DRIVE_TO_CURRENT_SWITCH))
                             else:
-                                paths[currentPath].append((newPoint[0], newPoint[1], DRIVE_TO_CURRENT_SCALE))
+                                paths[currentPath].append((int(newPoint[0]), int(newPoint[1]), DRIVE_TO_CURRENT_SCALE))
                             angles[currentPath].append(angles[currentPath][-1])
                         print(paths[currentPath][-1])
                     #BTN_SWITCH
@@ -494,7 +496,6 @@ def correctPosition(pos1, pos2):
     #don't change anything if there's no position change
     if angle == 999:
         return [pos1, pos2]
-    
     #convert to radians and find components
     xComp = math.cos(math.radians(angle-90))
     yComp = math.sin(math.radians(angle-90))
@@ -516,33 +517,25 @@ def correctPosition(pos1, pos2):
     #take 2 coordinates from points to make a line
     line = [corners[0], corners[3]]
     
-    #
     distTraveled = 0
     xTraveled = 0
     yTraveled = 0
-        
     """
     The loop will slowly move a line (front of robot) forward in the path the robot moves in.
     When it reaches the end of the line (distTraveled >= dist) or it hits something on the field, it will
     stop the line where it is and add distanceTraveled to the robot's coordinate
     """
-    scanning = True
-    while scanning:
-        templine = []
-        #inch the line forward - store as a temporary line
-        for point in line:
-            templine.append([point[0]+xComp, point[1]+yComp])
-        #if the line doesn't collide with anything and it hasn't reached the end of the path:
-        if not collideRectLine(templine) and not checkWallCollision(templine) and distTraveled <=dist:
-            #save the line as the temporary line that was moved forward
-            line = copy.deepcopy(templine)
+    while True:
+        if not collideRectLine(line) and not checkWallCollision(line) and distTraveled < dist:
+            for point in line:
+                point[0]+=xComp
+                point[1]+=yComp
             xTraveled += xComp
             yTraveled += yComp
             distTraveled = calcDist([xTraveled, yTraveled], [0, 0])
         else:
-            scanning = False
-    return [int(pos1[0]+xTraveled), int(pos1[1]+yTraveled)]
-
+            return [int(pos1[0]+xTraveled), int(pos1[1]+yTraveled)]
+    
 #Takes in a list of coordinates and instructions and prints auton commands to the console and to a file
 def outputPath(path, key):
     """
@@ -580,6 +573,9 @@ def outputPath(path, key):
         f = open("pygameRL.txt", "w")
     elif key == "RR":
         f = open("pygameRR.txt", "w")
+    """
+    FIX so that elevator will raise after turning and before motionmagic
+    """
     #delete the current contents of the file
     f.seek(0)
     f.truncate()
@@ -597,25 +593,28 @@ def outputPath(path, key):
                 #turn it back into a positive number and round it
                 time = -1 * round(path[x][2], 2)
                 print("addSequential(new WaitNSeconds(%s);" % time)
-                f.write("0 5 %s\n" % time)
+                f.write("0 5 %s" % time)
             #main() will tell outputPath() which DTC to use
             elif path[x][2] == DRIVE_TO_CURRENT_SWITCH:
                 print("addSequential(new DriveToCurrent(.2, 5));")
-                f.write("0 3 0\n")
+                f.write("0 3 0")
             elif path[x][2] == DRIVE_TO_CURRENT_SCALE:
                 print("addSequential(new DriveToCurrent(.07, 1);")
-                f.write("0 3 1\n")
+                f.write("0 3 1")
             elif path[x][2] == OPEN_CLAW:
                 print("addSequential(new RunCollectorReverse(0.05));")
-                f.write("0 2 0.05\n")
+                f.write("0 2 0.05")
             #commands to move the elevator
             elif path[x][2] == SWITCH_POSITION:
                 print("addParallel(new ElevateToXPos(2));")
-                f.write("1 1 2\n")
+                f.write("1 1 2")
             elif path[x][2] == SCALE_POSITION:
                 print("addParallel(new ElevateToXPos(5));")
-                f.write("1 1 5\n")
-        #since traveleing a distance requires two points, it checks the point ahead of it in paths[], so it can't go to the last bucket
+                f.write("1 1 5")
+            #be careful not to add an empty line to the end of the file
+            if x != len(path)-1 and x != 0:
+                f.write("\n")
+        #since traveleing a distance requires two points, it checks the point ahead of it in path[], so it can't go to the last bucket
         if x != len(path)-1:
             #defines two consecutive points in the list
             p1 = path[x]
@@ -633,7 +632,8 @@ def outputPath(path, key):
                 #if you're doing DTC or the angle difference is negligable, don't turns
                 if x != 0 and p2[2] != DRIVE_TO_CURRENT_SCALE and p2[2] != DRIVE_TO_CURRENT_SWITCH and calcAngleDifference(angle, previousAngle) > 2:
                     print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
-                    f.write("0 4 %s\n" % round(angle, 2))
+                    f.write("0 4 %s" % round(angle, 2))
+                    f.write("\n")
                 #store the angle for future reference
                 previousAngle = angle
             #calculate the distance moved in feet
@@ -644,7 +644,8 @@ def outputPath(path, key):
             #motion magic
             if distance != 0 and p2[2] == FORWARD or p2[2] == REVERSE:
                 print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
-                f.write("0 0 %s\n" % round(distance, 2))
+                f.write("0 0 %s" % round(distance, 2))
+    #close the file when finished
     f.close()
 
 #Draws buttons
@@ -739,21 +740,22 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
     screen.blit(textREVERSE, BTN_REVERSE.topleft)
     screen.blit(textNumber, (0, CONTROL_BORDER-35))
     
-    cube = pygame.image.load("cube.png")
-    screen.blit(textELEVATOR, (152, 110))
-    pygame.draw.rect(screen, DARK_GRAY, (240, 100, 20, 40), 0)
-    if variables[currentPath]["elevatorPosition"] == 0:
-        pygame.draw.rect(screen, GRAY, (238, 134, 24, 5), 0)
-        if not variables[currentPath]["clawOpen"]:
-            screen.blit(cube, (242, 124))
-    elif variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
-        pygame.draw.rect(screen, GRAY, (238, 125, 24, 5), 0)
-        if not variables[currentPath]["clawOpen"]:
-            screen.blit(cube, (242, 115))
-    elif variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
-        pygame.draw.rect(screen, GRAY, (238, 100, 24, 5), 0)
-        if not variables[currentPath]["clawOpen"]:
-            screen.blit(cube, (242, 90))
+    if len(paths[currentPath]) > 0:
+        cube = pygame.image.load("cube.png")
+        screen.blit(textELEVATOR, (152, 110))
+        pygame.draw.rect(screen, DARK_GRAY, (240, 100, 20, 40), 0)
+        if variables[currentPath]["elevatorPosition"] == 0:
+            pygame.draw.rect(screen, GRAY, (238, 134, 24, 5), 0)
+            if not variables[currentPath]["clawOpen"]:
+                screen.blit(cube, (242, 124))
+        elif variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
+            pygame.draw.rect(screen, GRAY, (238, 125, 24, 5), 0)
+            if not variables[currentPath]["clawOpen"]:
+                screen.blit(cube, (242, 115))
+        elif variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
+            pygame.draw.rect(screen, GRAY, (238, 100, 24, 5), 0)
+            if not variables[currentPath]["clawOpen"]:
+                screen.blit(cube, (242, 90))
 
 #Draws the robot at the given angle
 def drawRobot(screen, point, angle, color):
@@ -771,7 +773,7 @@ def drawPath(screen, path):
     angle = 0
     #go through every point in the path (except the last, because it looks ahead
     for x in range(len(path) - 1):
-        #set two point to draw a path between
+        #set two points to draw a path between
         last_point = path[x]
         next_point = path[x + 1]
         #don't draw anything if the positional coordinates (first two numbers) are identical to the last (doesn't move)
