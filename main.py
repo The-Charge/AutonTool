@@ -34,7 +34,7 @@ RIGHT_WALL = 402
 TOP_BOUND = 48
 LOWER_BOUND = 468
 PORTAL_LEFT = ((16, 421), (57, 472))    #2 points for a diagonal line
-PORTAL_RIGHT = ((402, 421), (362, 471))
+PORTAL_RIGHT = ((402, 421), (362, 471)) #these two are unused
 
 #Switch and Scales
 #SWITCH and SCALE are the entire thing, SWITCH_LEFT etc are for drawing the white rectangles
@@ -56,6 +56,8 @@ GREEN = (46, 130, 23)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
+GRAY = (100, 100, 100)
+DARK_GRAY = (25, 25, 25)
 
 # Button positions
 #defining rectangles for every button on the bottom of the screen
@@ -119,7 +121,7 @@ def main():
     #words in top left
     pygame.display.set_caption("AutonTool: LL")
     
-    #another refresh, I guess
+    #refresh the screen
     pygame.display.update()
     
     #set background image
@@ -345,7 +347,7 @@ def main():
                             else:
                                 paths[currentPath].append((newPoint[0], newPoint[1], DRIVE_TO_CURRENT_SCALE))
                             angles[currentPath].append(angles[currentPath][-1])
-                    #
+                        print(paths[currentPath][-1])
                     #BTN_SWITCH
                     elif indexClicked == 8 and not waitInput and not cloning:
                     #SWITCH button pressed, can't be clicked when taking keyboard input or cloning a path
@@ -413,9 +415,9 @@ def main():
                     #then loop through the path and update them if their commands are found - because variables[] isn't stored for each position
                     for point in paths[currentPath]:
                         if point[2] == SWITCH_POSITION:
-                            variables[currentPath]["elevatorPosition"] = 2
+                            variables[currentPath]["elevatorPosition"] = SWITCH_POSITION
                         elif point[2] == SCALE_POSITION:
-                            variables[currentPath]["elevatorPosition"] = 5
+                            variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                         elif point[2] == OPEN_CLAW:
                             variables[currentPath]["clawOpen"] = True
                 if len(paths[currentPath]) < 2:
@@ -648,27 +650,30 @@ def outputPath(path, key):
 #Draws buttons
 def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes):
     font = pygame.font.SysFont('arial', 22, True)
+    smallFont = pygame.font.SysFont('arial', 12, True)
     numDisplay = ""
     if waitInput:
         numDisplay = "Enter a time: "
         for digit in timeList:
             numDisplay += digit
         
-    text0 = font.render(' LL', True, BLACK)
-    text1 = font.render(' LR', True, BLACK)
-    text2 = font.render(' RL', True, BLACK)
-    text3 = font.render(' RR', True, BLACK)
-    text4 = font.render('CLONE', True, BLACK)
-    text5 = font.render('TO ALL', True, BLACK)
-    text6 = font.render(' EXPORT', True, BLACK)
-    text7 = font.render('D.T.C.', True, BLACK)
-    text8 = font.render('SWITCH', True, BLACK)
-    text9 = font.render('SCALE', True, BLACK)
-    text10 = font.render('  WAIT', True, BLACK)
-    text11 = font.render(' DROP', True, BLACK)
-    text12 = font.render('REVERSE', True, BLACK)
+    textLL = font.render(' LL', True, BLACK)
+    textLR = font.render(' LR', True, BLACK)
+    textRL = font.render(' RL', True, BLACK)
+    textRR = font.render(' RR', True, BLACK)
+    textCLONE = font.render('CLONE', True, BLACK)
+    textTO_ALL = font.render('TO ALL', True, BLACK)
+    textEXPORT = font.render(' EXPORT', True, BLACK)
+    textDTC = font.render('D.T.C.', True, BLACK)
+    textSWITCH = font.render('SWITCH', True, BLACK)
+    textSCALE = font.render('SCALE', True, BLACK)
+    textWAIT = font.render('  WAIT', True, BLACK)
+    textDROP = font.render(' DROP', True, BLACK)
+    textREVERSE = font.render('REVERSE', True, BLACK)
     textNumber = font.render(numDisplay, True, BLACK)
+    textELEVATOR = smallFont.render("Elevator Position:", True, BLACK)
     
+    #draw green and red rectangles over the Rect objects
     pygame.draw.rect(screen, GREEN, BTN_LL, 0)
     pygame.draw.rect(screen, YELLOW, BTN_LR, 0) 
     pygame.draw.rect(screen, GREEN, BTN_RL, 0) 
@@ -684,6 +689,7 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
     pygame.draw.rect(screen, GREEN, BTN_REVERSE, 0)
     pygame.draw.line(screen, GREEN, BTN_RR.topright, BTN_RR.bottomright, 2)
     
+    #highlight the corresponding field elements for the current path
     if currentPath == "LL":
         pygame.draw.rect(screen, BLACK, BTN_LL, 2)
         pygame.draw.rect(screen, WHITE, SWITCH_LEFT, 3)
@@ -701,6 +707,7 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
         pygame.draw.rect(screen, WHITE, SWITCH_RIGHT, 3)
         pygame.draw.rect(screen, WHITE, SCALE_RIGHT, 3)
     
+    #highlight buttons when they are toggled ON
     if cloning:
         pygame.draw.rect(screen, BLACK, BTN_CLONE, 2)
     if waitInput:
@@ -708,6 +715,7 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
     if variables[currentPath]["reversed"]:
         pygame.draw.rect(screen, BLACK, BTN_REVERSE, 2)
     
+    #highlight buttons for a set time when they are clicked
     for button in buttonSizes:
         if timers[str(button)] > 0:
             pygame.draw.rect(screen, BLACK, button, 2)
@@ -715,20 +723,37 @@ def drawControls(screen, currentPath, paths, variables, cloning, waitInput, time
         if timers[str(button)] < 0:
             timers[str(button)] = 0
     
-    screen.blit(text0, BTN_LL.topleft)
-    screen.blit(text1, BTN_LR.topleft)
-    screen.blit(text2, BTN_RL.topleft)
-    screen.blit(text3, BTN_RR.topleft)
-    screen.blit(text4, BTN_CLONE.topleft)
-    screen.blit(text5, BTN_ALL.topleft)
-    screen.blit(text6, BTN_EXPORT.topleft)
-    screen.blit(text7, BTN_DTC.topleft)
-    screen.blit(text8, BTN_SWITCH.topleft)
-    screen.blit(text9, BTN_SCALE.topleft)
-    screen.blit(text10, BTN_WAIT.topleft)
-    screen.blit(text11, BTN_DROP.topleft)
-    screen.blit(text12, BTN_REVERSE.topleft)
+    #display text on the screen in various locations
+    screen.blit(textLL, BTN_LL.topleft)
+    screen.blit(textLR, BTN_LR.topleft)
+    screen.blit(textRL, BTN_RL.topleft)
+    screen.blit(textRR, BTN_RR.topleft)
+    screen.blit(textCLONE, BTN_CLONE.topleft)
+    screen.blit(textTO_ALL, BTN_ALL.topleft)
+    screen.blit(textEXPORT, BTN_EXPORT.topleft)
+    screen.blit(textDTC, BTN_DTC.topleft)
+    screen.blit(textSWITCH, BTN_SWITCH.topleft)
+    screen.blit(textSCALE, BTN_SCALE.topleft)
+    screen.blit(textWAIT, BTN_WAIT.topleft)
+    screen.blit(textDROP, BTN_DROP.topleft)
+    screen.blit(textREVERSE, BTN_REVERSE.topleft)
     screen.blit(textNumber, (0, CONTROL_BORDER-35))
+    
+    cube = pygame.image.load("cube.png")
+    screen.blit(textELEVATOR, (152, 110))
+    pygame.draw.rect(screen, DARK_GRAY, (240, 100, 20, 40), 0)
+    if variables[currentPath]["elevatorPosition"] == 0:
+        pygame.draw.rect(screen, GRAY, (238, 134, 24, 5), 0)
+        if not variables[currentPath]["clawOpen"]:
+            screen.blit(cube, (242, 124))
+    elif variables[currentPath]["elevatorPosition"] == SWITCH_POSITION:
+        pygame.draw.rect(screen, GRAY, (238, 125, 24, 5), 0)
+        if not variables[currentPath]["clawOpen"]:
+            screen.blit(cube, (242, 115))
+    elif variables[currentPath]["elevatorPosition"] == SCALE_POSITION:
+        pygame.draw.rect(screen, GRAY, (238, 100, 24, 5), 0)
+        if not variables[currentPath]["clawOpen"]:
+            screen.blit(cube, (242, 90))
 
 #Draws the robot at the given angle
 def drawRobot(screen, point, angle, color):
@@ -878,7 +903,7 @@ def checkWallCollision(line):
     return False
 
 #Return True if two lines intersect
-#slows the program down too much, DO NOT USE
+#CRASHES PROGRAM DO NOT USE
 def linesIntersect(line1, line2):
     line1 = [[line1[0][0], line1[0][1]], [line1[1][0], line1[1][1]]]
     line2 = [[line2[0][0], line2[0][1]], [line2[1][0], line2[1][1]]]
@@ -994,7 +1019,7 @@ def calcAngle(p1, p2):
 
 #Takes in 2 lists of digits and merges them into a list of characters to display
 #Used with WAIT
-def mergeDigits(list1, list2, decimal = False):
+def mergeDigits(list1, list2, decimal):
     #adds integers, the decimal, and decimals in that order to a list of strings for output
     finalList = []
     for digit in list1:
