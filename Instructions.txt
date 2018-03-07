@@ -15,7 +15,7 @@ position, as long as there is nothing in the way.
 DELTING ACTIONS
 
 Right click anywhere on the screen to delete your last action.
->>>Doesn't work with cloning paths
+>Doesn't work with cloning paths
 
 -----------------
 LL-LR-RL-RR
@@ -23,7 +23,7 @@ LL-LR-RL-RR
 These buttons will switch the path you are currently working on. The first letter represents your switch position,
 and the second represents you scale position. Both the switch and the scale are highlighted on the screen to show
 which mode you are currently in.
->>>Switching branches doesn't delete anything - everything is saved separately
+>Switching branches doesn't delete anything - everything is saved separately
 
 -----------------
 CLONE
@@ -35,14 +35,15 @@ want to copy to. You can click CLONE again to stop without copying a path.
 TO ALL
 
 TO ALL will copy the current path to all other paths.
->>>Don't accidentally click this if you don't want to
+>Don't accidentally click this if you don't want to
+>If you want to clear all paths, it's recommended that you delete everything you can in one path down to the initial position, click TO ALL make all paths only have the initial position, then delete once more
 
 -----------------
 EXPORT
 
 Write instructions to a file for the robot to read, as well as print out a description of the path the robot will
 take for each of the four switch/scale positions
->>>Make sure this is clicked after all other changes are made
+>Make sure this is clicked after all other changes are made
 
 -----------------
 D.T.C.
@@ -53,21 +54,21 @@ scale to ensure the robot is in contact with it before dropping a cube.
 There are two ways to call the DriveToCurrent command: one relatively fast, and one slower. Which one is used depends on
 which position the elevator is in. If it is raised all the way up, it will move slowly so the elevator will hit the
 scale gently before stopping. If it is only raised to the switch position, it will move forward more quickly.
->>>Make sure this is used before dropping a cube into the switch or scale
+>Make sure this is used before dropping a cube into the switch or scale
 
 -----------------
 SWITCH
 
-Raises the elevator in position to drop a cube into the switch.
+Raises the elevator in position to drop a cube into the SWITCH.
 
 -----------------
 SCALE
 
-Raises the elevator in position to drop a cube into the scale.
+Raises the elevator in position to drop a cube into the SCALE.
 
 ----------------------------------
->>>Note about SWITCH and SCALE:
-Elevator position commands are done in parallel. This means it will execute at the same time as the one that command
+>Note about SWITCH and SCALE:
+Elevator position commands are done "in parallel". This means it will execute at the same time as the command
 after it. Ideally, the elevator should be raised while moving forward, so when drawing the path, make sure
 you click SWITCH or SCALE before moving the robot into position.
 ----------------------------------
@@ -94,23 +95,42 @@ a cube in the switch or scale.
 ----------------------------------
 SAMPLE RUN - left switch and move forward
 
->>>click on field below alliance switch
+*click on field below alliance switch
+
 	Places robot on starting line facing the switch
->>>SWITCH
+
+*SWITCH
+
 	Robot raises elevator to switch position
->>>click close to the switch
+
+*click close to the switch
+
 	Robot moves forward to area near switch
->>>D.T.C.
+
+*D.T.C.
+
 	Robot moves forward until it hits the switch
->>>DROP
+
+*DROP
+
 	Robot drops cube into switch
->>>REVERSE
+
+*REVERSE
+
 	Toggle reverse mode on
->>>click on field behind robot
+
+*click on field behind robot
+
 	Robot backs up to cursor position
->>>REVERSE
+
+*REVERSE
+
 	Toggle reverse mode off
->>>click on field to left of robot
+
+*click on field to left of robot
+
 	Robot turns 90deg left and moves forward to cursor position
->>>click far end of field
+
+*click far end of field
+
 	Robot turns 90deg right (to 0 deg absolute) and moves forward to cursor position
