@@ -81,7 +81,7 @@ ROBOT_DIMS_FEET = [dim / 12 for dim in ROBOT_DIMS_INCHES]
 SIDE = int(ROBOT_DIMS_FEET[0] * PIXELS_PER_FOOT / 2)
 FRONT = int(ROBOT_DIMS_FEET[1] * PIXELS_PER_FOOT / 2)
 ROBOT_DIAG_FEET = math.sqrt(ROBOT_DIMS_FEET[0] ** 2 + ROBOT_DIMS_FEET[1] ** 2) / 2
-   
+
 def main():
     #start on the "LL" tab
     currentPath = "LL"
@@ -174,7 +174,7 @@ def main():
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 #if you click on the field and you aren't taking keyboard input
                 if event.pos[1] < CONTROL_BORDER and not waitInput:
-                    #event.pos is a tuple of the mouse's coordinates: (xpos, ypos). use event.pos[0] or [1] to get the components
+                    #event.pos is a tuple of the mouse's coordinates: (xpos, ypos). use event.pos[0] or [1] to get the x and y coordinates
                     #different code depending on which move you're making (initial position, first move forward, everthing else after)
                     
                     #initial position      
@@ -327,7 +327,18 @@ def main():
                         timers[str(BTN_EXPORT)] = .1
                         #writing instructions to a file is done in outputPath()
                         #output to the console will be done here
-                        print("\n----------------------------------------\n-----LL-----")
+                        print("\n----------------------------------------")
+                        #display position in feet from the portal walls for field positioning before the match
+                        #pick the first x coord from an arbitrary branch
+                        if len(paths["LL"]) > 0:
+                            start_x = paths["LL"][0][0]
+                            distLeft = abs((start_x-SIDE) - (LEFT_BOUND-SIDE)) / PIXELS_PER_FOOT
+                            distRight = abs((RIGHT_BOUND+SIDE) - (start_x+SIDE)) / PIXELS_PER_FOOT
+                            if distLeft < distRight:
+                                print("Initial position: %s feet from the left portal\n" % (round(distLeft, 2)))
+                            else:
+                                print("Initial position: %s feet from the right portal\n" % (round(distRight, 2)))
+                        print("-----LL-----")
                         outputPath(paths["LL"], angles["LL"], "LL")
                         print("\n-----LR-----")
                         outputPath(paths["LR"], angles["LR"], "LR")
@@ -433,18 +444,20 @@ def main():
                             variables[currentPath]["elevatorPosition"] = SCALE_POSITION
                         elif point[2] == OPEN_CLAW:
                             variables[currentPath]["clawOpen"] = True
-                if len(paths[currentPath]) < 2:
-                    variables[currentPath]["moved"] = False
-                if len(paths[currentPath]) == 1:
+                elif len(paths[currentPath]) == 1:
                     #only delete initial position if all other paths are only at the initial position
+                    #loop through every path in paths[] and figure out if they all only have 1 robot position stored
                     initialPosition = True
                     for path in paths:
                         if len(paths[path]) > 1:
                             initialPosition = False
+                    #if all 4 branches only have 1 robot position, go ahead and delete
                     if initialPosition:
                         for path in paths:
                             paths[path].pop()
                             angles[path].pop()
+                if len(paths[currentPath]) < 2:
+                    variables[currentPath]["moved"] = False
             #if WAIT is toggled and a key press is detected
             if event.type == pygame.KEYDOWN and waitInput:
                 #takes the correct digit and adds it to the correct list
@@ -697,7 +710,7 @@ def outputPath(path, angles, key):
 
 #Draws buttons - separated from main for organization
 def drawControls(screen, currentPath, paths, variables, cloning, waitInput, timeList, timers, buttonSizes):
-    font = pygame.font.SysFont('arial', 22, True)
+    font = pygame.font.SysFont('arial', 18, True)
     smallFont = pygame.font.SysFont('arial', 12, True)
     numDisplay = ""
     if waitInput:
