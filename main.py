@@ -100,10 +100,10 @@ def main():
     """
     paths = {"LL":[], "LR":[], "RL":[], "RR":[]}
     angles = {"LL":[], "LR":[], "RL":[], "RR":[]}
-    variables = {"LL":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
-                 "LR":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
-                 "RL":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}, \
-                 "RR":{"reversed":False, "clawOpen":False, "elevatorPosition":0, "moved":False}}
+    variables = {"LL":{"reversed":False, "clawOpen":False, "elevatorPosition":0}, \
+                 "LR":{"reversed":False, "clawOpen":False, "elevatorPosition":0}, \
+                 "RL":{"reversed":False, "clawOpen":False, "elevatorPosition":0}, \
+                 "RR":{"reversed":False, "clawOpen":False, "elevatorPosition":0}}
     
     #this is used to keep track of a number for each button. When it's pressed, it adds a number of seconds to it.
     #In drawControls(), the number decrements and a rectangle is drawn around each box until it reaches 0
@@ -156,12 +156,12 @@ def main():
         pygame.display.flip()
         
         #check if the robot has already been moved forwards
-        variables[currentPath]["moved"] = False
+        moved = False
         for x in paths[currentPath]:
             if x[2] == FORWARD:
-                variables[currentPath]["moved"] = True
+                moved = True
         #prevent you from going backwards until you've already gone forwards
-        if not variables[currentPath]["moved"]:
+        if not moved:
             variables[currentPath]["reversed"] = False
         #prevents adding a timeout if the robot's initial position isn't defined
         if len(paths[currentPath]) < 1:
@@ -177,18 +177,27 @@ def main():
                     #event.pos is a tuple of the mouse's coordinates: (xpos, ypos). use event.pos[0] or [1] to get the components
                     #different code depending on which move you're making (initial position, first move forward, everthing else after)
                     
-                    #initial position                    
-                    if len(paths[currentPath]) == 0:
+                    #initial position      
+                    #the robot has to have the same initial position for all 4 branches
+                    #only set initial position if everything is empty
+                    allClear = True
+                    for path in paths:
+                        if len(paths[path]) > 0:
+                            allClear = False
+                    if allClear:
                         #take the xpos of the click and correct it if it's not in legal range
                         start_x = event.pos[0]
                         start_x = checkStart(start_x)
-                        #the y position is always constant for the first move
-                        paths[currentPath].append((start_x, STARTING_Y, STARTING))
-                        #first angle is always 0
-                        angles[currentPath].append(0)
+                        #initial position set for all paths
+                        for path in paths:
+                            #the y position is always constant for the first move
+                            paths[path].append((start_x, STARTING_Y, STARTING))
+                            #first angle is always 0
+                            angles[path].append(0)
+                        
                         print(paths[currentPath][-1])
                     #"moved" is the variable that tells if the robot has already made its first move (forward)
-                    elif not variables[currentPath]["moved"]:
+                    elif not moved:
                         #use the first move correction code to prevent it from going past the switch or scale
                         firstMove = checkFirstMove(event.pos, paths[currentPath])
                         #add a coordinate with the corrected y coordinate and the original x coordinate
@@ -331,7 +340,7 @@ def main():
                         #take the angle the robot is at and find a position very far away in that directions
                         #correctPosition() will stop it right when it hits an obstacle
                         #only do DTC if the robot has moved and the elevator has been raised
-                        if variables[currentPath]["moved"] and variables[currentPath]["elevatorPosition"] != 0:
+                        if moved and variables[currentPath]["elevatorPosition"] != 0:
                             lastPoint = paths[currentPath][-1]
                             #find current angle in radians
                             angle = angles[currentPath][-1]
@@ -406,7 +415,7 @@ def main():
             #remove the last coordinate/instruction given from paths[] and update the robot's state in variables[]
             if event.type == pygame.MOUSEBUTTONUP and event.button == 3:
                 #do nothing if there's nothing in paths[currentPath] - nothing to delete
-                if len(paths[currentPath]) > 0:
+                if len(paths[currentPath]) > 1:
                     #remove the last item in paths[currentPath] and angles[currentPath]
                     paths[currentPath].pop()
                     angles[currentPath].pop()
@@ -426,6 +435,16 @@ def main():
                             variables[currentPath]["clawOpen"] = True
                 if len(paths[currentPath]) < 2:
                     variables[currentPath]["moved"] = False
+                if len(paths[currentPath]) == 1:
+                    #only delete initial position if all other paths are only at the initial position
+                    initialPosition = True
+                    for path in paths:
+                        if len(paths[path]) > 1:
+                            initialPosition = False
+                    if initialPosition:
+                        for path in paths:
+                            paths[path].pop()
+                            angles[path].pop()
             #if WAIT is toggled and a key press is detected
             if event.type == pygame.KEYDOWN and waitInput:
                 #takes the correct digit and adds it to the correct list
@@ -590,7 +609,7 @@ def outputPath(path, angles, key):
     #the robot's angle will always start at 0deg
     previousAngle = 0
     #All auton is done in low gear
-    print("addSequential(new ShiftLow());")
+    #print("addSequential(new ShiftLow());")
     #Take each coordinate in the path
     for x in range(len(path)):
         #path[x][2] is the third number after the positional coordinates - it gives additional instructions (see constants above)
@@ -598,13 +617,15 @@ def outputPath(path, angles, key):
         if path[x][2] < 0:
             #turn it back into a positive number and round it
             time = -1 * round(path[x][2], 2)
-            print("addSequential(new WaitNSeconds(%s);" % time)
+            #print("addSequential(new WaitNSeconds(%s);" % time)
+            print("Wait %s seconds" % time)
             f.write("0 5 %s" % time)
             #if it isn't EOF, make a new line - there shouldn't be an empty line at the end
             if x != len(path)-1:
                 f.write("\n")
         elif path[x][2] == OPEN_CLAW:
-            print("addSequential(new RunCollectorReverse(0.05));")
+            #print("addSequential(new RunCollectorReverse(0.05));")
+            print("Drop cube")
             f.write("0 2 0.05")
             if x != len(path)-1:
                 f.write("\n")
@@ -624,24 +645,25 @@ def outputPath(path, angles, key):
                     angle += 180
                 else:
                     angle -= 180
-            #don't output any turns if the robot doesn't move
-            if angle != 999:
-                #if the turning is insignificant, don't bother outputting it
-                if calcAngleDifference(angle, previousAngle) > 2:
-                    print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
-                    f.write("0 4 %s" % round(angle, 2))
-                    #TurnNDegreesAbsolutePID will always be followed by something else, so you don't need to check for EOF
-                    #when adding the \n
-                    f.write("\n")
-                previousAngle = angle
+            #if the turning is insignificant, don't bother outputting it
+            if calcAngleDifference(angle, previousAngle) > 2:
+                #print("addSequential(new TurnNDegreesAbsolutePID(%s));" % round(angle, 2))
+                print("Turn to %s degrees" % round(angle, 2))
+                f.write("0 4 %s" % round(angle, 2))
+                #TurnNDegreesAbsolutePID will always be followed by something else, so you don't need to check for EOF
+                #when adding the \n
+                f.write("\n")
+            previousAngle = angle
         #commands to move the elevator
         if path[x][2] == SWITCH_POSITION:
-            print("addParallel(new ElevateToXPos(2));")
+            #print("addParallel(new ElevateToXPos(2));")
+            print("Raise elevator to SWITCH position")
             f.write("1 1 2")
             if x != len(path)-1:
                 f.write("\n")
         elif path[x][2] == SCALE_POSITION:
-            print("addParallel(new ElevateToXPos(5));")
+            #print("addParallel(new ElevateToXPos(5));")
+            print("Raise elevator to SCALE position")
             f.write("1 1 5")
             if x != len(path)-1:
                 f.write("\n")
@@ -652,18 +674,21 @@ def outputPath(path, angles, key):
                 distance = -1 * distance
             #motion magic
             if distance != 0 and newPoint[2] == FORWARD or newPoint[2] == REVERSE:
-                print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
+                #print("addSequential(new DriveXFeetMotionMagic(%s));" % round(distance, 2))
+                print("Drive %s feet" % round(distance, 2))
                 f.write("0 0 %s" % round(distance, 2))
                 if x+1 != len(path)-1:
                     f.write("\n")
             #main() will tell outputPath() which DTC to use
             elif newPoint[2] == DRIVE_TO_CURRENT_SWITCH:
-                print("addSequential(new DriveToCurrent(.2, 5));")
+                #print("addSequential(new DriveToCurrent(.2, 5));")
+                print("Drive forward until it hits something (SWITCH)")
                 f.write("0 3 0")
                 if x+1 != len(path)-1:
                     f.write("\n")
             elif newPoint[2] == DRIVE_TO_CURRENT_SCALE:
-                print("addSequential(new DriveToCurrent(.07, 1);")
+                #print("addSequential(new DriveToCurrent(.07, 1);")
+                print("Drive forward and hit something (SCALE) with the elevator")
                 f.write("0 3 1")
                 if x+1 != len(path)-1:
                     f.write("\n")
