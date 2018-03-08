@@ -10,6 +10,9 @@ SCREEN_Y = 559
 # Center of robot at start
 STARTING_Y = 447
 
+#Deadband for moving straight
+DEADBAND = 5
+
 #Initial invalid zones
 LEFT_BOUND = 79
 RIGHT_BOUND = 342
@@ -217,16 +220,16 @@ def main():
                         #90% of movements are done at 90deg angles
                         #don't bother with this part if there is no position change (angle == 999)
                         if angle != 999:
-                            if angle < 5 and angle > -5:
+                            if calcAngleDifference(angle, 0) < DEADBAND:
                                 pos[0] = lastPoint[0]
                                 angle = 0
-                            elif angle > 175 or angle < -175:
+                            elif calcAngleDifference(angle, 180) < DEADBAND:
                                 pos[0] = lastPoint[0]
                                 angle = 180
-                            elif angle > 85 and angle < 95:
+                            elif calcAngleDifference(angle, 90) < DEADBAND:
                                 pos[1] = lastPoint[1]
                                 angle = 90
-                            elif angle < -85 and angle > -95:
+                            elif calcAngleDifference(angle, -90) < DEADBAND:
                                 pos[1] = lastPoint[1]
                                 angle = -90
                         
@@ -698,7 +701,7 @@ def outputPath(path, angles, key):
                 print("Drive forward until it hits something (SWITCH)")
                 f.write("0 3 0")
                 if x+1 != len(path)-1:
-                    f.write("\n")
+                    f.write("\n") 
             elif newPoint[2] == DRIVE_TO_CURRENT_SCALE:
                 #print("addSequential(new DriveToCurrent(.07, 1);")
                 print("Drive forward and hit something (SCALE) with the elevator")
